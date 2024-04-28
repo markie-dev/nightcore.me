@@ -3,10 +3,12 @@ import io
 import time
 import threading
 import nightcore as nc
+import mimetypes
 from flask import Flask, request, send_file, render_template
 from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
+
 # delete a file after a delay of 60 seconds
 def delete_file_after_delay(filename, delay=60):
     """Delete a file after a delay."""
@@ -29,6 +31,11 @@ def upload():
     file = request.files['audiofile']
     if file.filename == '':
         return 'No selected file'
+
+    # validate the file type
+    mimetype = mimetypes.guess_type(file.filename)[0]
+    if not mimetype or not mimetype.startswith('audio'):
+        return 'Invalid file type'
 
     # read the file into memory
     file_stream = io.BytesIO(file.read())
