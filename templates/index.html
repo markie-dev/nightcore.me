@@ -1,0 +1,44 @@
+<!-- /templates/index.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>nightcore.me</title>
+<script src="https://kit.fontawesome.com/26ff671cf4.js" crossorigin="anonymous"></script>
+<link href='https://fonts.googleapis.com/css?family=Inter' rel='stylesheet'>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+</head>
+<body>
+<div class="banner">
+    <div class="banner-content">
+        <h1 class="logo">nightcore.me</h1>
+        <nav class="navbar">
+            <a href="/" class="nav-link active">home</a>
+            <a href="/about" class="nav-link">about</a>
+        </nav>
+    </div>
+</div>
+<div class="hero">
+    <h1 class="hero-text">nightcore any song with the click of a button.</h1>
+</div>
+<form method="post" action="/upload" enctype="multipart/form-data" class="form">
+    <label class="upload-btn">
+        <i class="fa-solid fa-arrow-up-from-bracket"></i>
+        <a style="padding-left: 10px;">Upload File</a>
+        <input type="file" name="audiofile" style="display: none;" onchange="document.getElementById('submit-btn').click();">
+    </label>
+    <input type="submit" id="submit-btn" style="display: none;">
+</form>
+<div class="blur-background"></div>
+<div class="circle-container">
+    <div class="circle2 purple"></div>
+    <div class="circle3 magenta"></div>
+    <div class="circle red"></div>
+</div>
+
+<footer class="footer-banner">
+    2024 &copy; markie-dev
+</footer>
+</body>
+</html>

@@ -1,0 +1,239 @@
+html, body {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    background-color: #f6f6f6;
+    font-family: 'Inter';
+    font-weight: normal;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+  
+  .banner {
+    background: #f6f6f6;
+    padding: 10px 20px;
+    position: fixed; /* Fixed at the top */
+    top: 0;
+    left: 0;
+    z-index: 100;
+  }
+  
+  .banner-content {
+    display: flex;
+    align-items: center;
+    margin: 0 auto;
+  }
+  
+  .logo {
+    font-size: 1rem;
+    color: #333;
+    margin: 0;
+    margin-right: 20px;
+  }
+  
+  .nav-link {
+    text-decoration: none;
+    color: #333;
+    margin-left: 20px;
+    font-size: 1rem;
+    transition: color 0.3s;
+  }
+  
+  .nav-link.active {
+    padding: 5px 10px;
+    background-color: #333;
+    color: #fff;
+    border-radius: 22px;
+    transition: background-color 0.3s, color 0.3s;
+}
+
+.footer-banner {
+    position: fixed;
+    left: 0;
+    bottom: 0;
+    width: 100%;
+    background-color: black;
+    color: white;
+    text-align: center;
+    padding: 5px 0;
+    font-family: 'Inter', sans-serif;
+    z-index: 10;
+}
+
+  .nav-link:hover {
+    color: #666;
+  }
+  
+  .blur-background {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(246, 246, 246, 0.81);
+    backdrop-filter: blur(25px);
+    z-index: 2;
+  }
+  
+  .circle-container {
+    position: absolute;
+    top: 60px;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    z-index: 1;
+  }
+
+  .hero-text {
+    z-index: 1000;
+    color: #000000;
+    font-size: 2rem;
+    max-width: 80%;
+    position: relative;
+}
+
+.hero {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    padding-top: 250px;
+}
+.subtext {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    padding-top: 0px;
+}
+.sub-text {
+    z-index: 1000;
+    color: #727272;
+    font-size: 1rem;
+    max-width: 80%;
+    position: relative;
+}
+
+.carousel {
+    display: flex;
+    justify-content: center;
+    padding: 20px;
+    z-index: 1001;
+  }
+  
+  .social-btn {
+    display: inline-block;
+    width: 50px;
+    height: 50px;
+    margin: 0 10px;
+    background-color: #333;
+    color: #fff;
+    border-radius: 22px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    text-decoration: none;
+    z-index: 1001;
+    transition: background-color 0.3s;
+  }
+  
+  .social-btn:hover {
+    background-color: #555;
+  }
+  
+  .social-btn i {
+    font-size: 24px;
+  }
+
+.button {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    padding-top: 0px;
+}
+
+.form {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    padding-top: 0px;
+    z-index: 1001;
+}
+
+.upload-btn {
+    font-family: 'Inter', sans-serif;
+    font-size: 1rem;
+    color: #fff;
+    background-color: #333;
+    border: none;
+    padding: 12px 24px;
+    border-radius: 22px;
+    cursor: pointer;
+    outline: none;
+    transition: background-color 0.3s, transform 0.1s;
+    margin-top: 5px;
+    z-index: 1001;
+    box-shadow: 8px 8px 12px rgba(0, 0, 0, 0.1);
+}
+
+.upload-btn:hover {
+    background-color: #666;
+    transform: translateY(-2px);
+}
+
+.upload-btn:active {
+    transform: translateY(1px);
+}
+  
+  .circle {
+    width: 250px;
+    height: 250px;
+    border-radius: 50%;
+    background-color: #d60ac5;
+    position: absolute;
+    animation: moveCircle3 12s infinite;
+  }
+  
+  .circle2 {
+    width: 300px;
+    height: 300px;
+    border-radius: 50%;
+    background-color: #8626FF;
+    position: absolute;
+    animation: moveCircle1 10s infinite;
+  }
+  
+  .circle3 {
+    width: 300px;
+    height: 300px;
+    border-radius: 50%;
+    background-color: #BA26FF;
+    position: absolute;
+    animation: moveCircle2 8s infinite;
+  }
+  
+  @keyframes moveCircle1 {
+    0% { transform: translate(0, 0); }
+    50% { transform: translate(100px, 50px); }
+    100% { transform: translate(0, 0); }
+  }
+  
+  @keyframes moveCircle2 {
+    0% { transform: translate(0, 0); }
+    50% { transform: translate(-100px, -50px); }
+    100% { transform: translate(0, 0); }
+  }
+  
+  @keyframes moveCircle3 {
+    0% { transform: translate(0, 0); }
+    50% { transform: translate(-100px, -100px); }
+    100% { transform: translate(0, 0); }
+  }
+  
