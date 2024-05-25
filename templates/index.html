@@ -5,8 +5,10 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>nightcore.me</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap" rel="stylesheet">
 <script src="https://kit.fontawesome.com/26ff671cf4.js" crossorigin="anonymous"></script>
-<link href='https://fonts.googleapis.com/css?family=Inter' rel='stylesheet'>
 <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
 </head>
 <body>
@@ -19,6 +21,7 @@
         </nav>
     </div>
 </div>
+<div class="main">
 <div class="hero">
     <h1 class="hero-text">nightcore any song with the click of a button.</h1>
 </div>
@@ -47,6 +50,7 @@
 <footer class="footer-banner">
     2024 &copy; markie-dev
 </footer>
+</div>
 
 <script>
     var processingText = document.getElementById('processing');
@@ -89,19 +93,9 @@
         if (!acceptedTypes.includes(fileType)) {
             // Display toast message
             var toast = document.createElement('div');
+            toast.className = 'toast-notification';
             toast.textContent = 'Invalid file type. Please upload a .wav, .mp3, .aac, or .ogg file.';
-            toast.style.position = 'fixed';
-            toast.style.bottom = '50px';
-            toast.style.right = '20px';
-            toast.style.padding = '20px';
             toast.style.backgroundColor = 'red';
-            toast.style.zIndex = '2005';
-            toast.style.borderRadius = '5px';
-            toast.style.color = 'white';
-            toast.style.boxShadow = '0px 0px 10px rgba(0, 0, 0, 0.5)'; // Add box shadow
-            toast.style.webkitBoxShadow = '0px 0px 10px rgba(0, 0, 0, 0.5)'; // Add webkit box shadow for older browsers
-            toast.style.opacity = '0'; // Start invisible
-            toast.style.transition = 'opacity 0.3s ease-in-out'; // Add transition
             document.body.appendChild(toast);
             requestAnimationFrame(function() {
                 requestAnimationFrame(function() {
@@ -116,6 +110,7 @@
             }, 5000);
             return;
         }
+
         document.querySelector('.upload-btn').style.display = 'none';
         document.getElementById('processing').style.display = 'block';
         startProcessingAnimation();
@@ -123,6 +118,15 @@
         var formData = new FormData();
         formData.append('audiofile', files[0]);
         var xhr = new XMLHttpRequest();
+        processingText.textContent = 'Uploading';
+        xhr.upload.onprogress = function(e) {
+            if (e.lengthComputable) {
+                var percentComplete = Math.round((e.loaded / e.total) * 100);
+                if (percentComplete === 100) {
+                    processingText.textContent = 'Processing';
+                }
+            }
+        };
         xhr.open('POST', '/upload', true);
         xhr.responseType = 'blob';
         xhr.onloadstart = function(e) {
@@ -145,19 +149,9 @@
             document.getElementById('processing').style.display = 'none';
             stopProcessingAnimation();
             var toast = document.createElement('div');
-            toast.textContent = 'File "' + a.download + '" has been downloaded.';
-            toast.style.position = 'fixed';
-            toast.style.bottom = '50px';
-            toast.style.right = '20px';
-            toast.style.padding = '20px';
+            toast.className = 'toast-notification';
             toast.style.backgroundColor = 'green';
-            toast.style.zIndex = '2005';
-            toast.style.borderRadius = '5px';
-            toast.style.color = 'white';
-            toast.style.boxShadow = '0px 0px 10px rgba(0, 0, 0, 0.5)'; // Add box shadow
-            toast.style.webkitBoxShadow = '0px 0px 10px rgba(0, 0, 0, 0.5)'; // Add webkit box shadow for older browsers
-            toast.style.opacity = '0'; // Start invisible
-            toast.style.transition = 'opacity 0.3s ease-in-out'; // Add transition
+            toast.textContent = 'File "' + a.download + '" has been downloaded.';
             document.body.appendChild(toast);
             requestAnimationFrame(function() {
                 requestAnimationFrame(function() {
