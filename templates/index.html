@@ -27,10 +27,11 @@
         <label class="upload-btn">
             <i class="fa-solid fa-arrow-up-from-bracket"></i>
             <a style="padding-left: 10px;">Upload File</a>
-            <input type="file" name="audiofile" accept="audio/*" style="display: none;" onchange="document.getElementById('submit-btn').click();">
+            <input type="file" name="audiofile" accept=".wav,.mp3,.aac,.ogg" style="display: none;" onchange="document.getElementById('submit-btn').click();">
         </label>
         <input type="submit" id="submit-btn" style="display: none;">
     </form>
+    <div id="processing" class="processing-btn" style="display: none; z-index: 2001;">Processing</div>
     <svg class="progress-ring" width="130" height="130" viewBox="0 0 130 130">
         <circle class="progress-ring__circle" stroke="white" stroke-width="5" fill="transparent" r="58" cx="65" cy="65"/>
     </svg>
@@ -48,6 +49,33 @@
 </footer>
 
 <script>
+    var processingText = document.getElementById('processing');
+    var processingInterval;
+    var count = 0;
+
+    // Function to start the animation
+    function startProcessingAnimation() {
+        count = 0;
+        processingInterval = setInterval(function() {
+            if (count < 3) {
+                processingText.textContent += '.';
+                count++;
+            } else {
+                processingText.textContent = 'Processing';
+                clearInterval(processingInterval);
+                count = 0;
+                startProcessingAnimation(); // Call the function again here
+            }
+        }, 1000);
+    }
+
+    // Function to stop the animation
+    function stopProcessingAnimation() {
+        clearInterval(processingInterval);
+        processingText.textContent = 'Processing';
+        count = 0;
+    }
+
     document.body.addEventListener('dragover', function(e) {
         e.preventDefault();
     });
@@ -56,27 +84,51 @@
     e.preventDefault();
     var files = e.dataTransfer.files;
     if (files.length > 0) {
+        var fileType = files[0].type;
+        var acceptedTypes = ['audio/wav', 'audio/mpeg', 'audio/aac', 'audio/ogg'];
+        if (!acceptedTypes.includes(fileType)) {
+            // Display toast message
+            var toast = document.createElement('div');
+            toast.textContent = 'Invalid file type. Please upload a .wav, .mp3, .aac, or .ogg file.';
+            toast.style.position = 'fixed';
+            toast.style.bottom = '50px';
+            toast.style.right = '20px';
+            toast.style.padding = '20px';
+            toast.style.backgroundColor = 'red';
+            toast.style.zIndex = '2005';
+            toast.style.borderRadius = '5px';
+            toast.style.color = 'white';
+            toast.style.boxShadow = '0px 0px 10px rgba(0, 0, 0, 0.5)'; // Add box shadow
+            toast.style.webkitBoxShadow = '0px 0px 10px rgba(0, 0, 0, 0.5)'; // Add webkit box shadow for older browsers
+            toast.style.opacity = '0'; // Start invisible
+            toast.style.transition = 'opacity 0.3s ease-in-out'; // Add transition
+            document.body.appendChild(toast);
+            requestAnimationFrame(function() {
+                requestAnimationFrame(function() {
+                    toast.style.opacity = '1'; // Fade in
+                });
+            });
+            setTimeout(function() {
+                toast.style.opacity = '0'; // Start fade out
+                setTimeout(function() {
+                    document.body.removeChild(toast);
+                }, 300); // Remove after transition is done
+            }, 5000);
+            return;
+        }
         document.querySelector('.upload-btn').style.display = 'none';
-        var progressRingCircle = document.querySelector('.progress-ring__circle');
-        var initialOffset = 365;
-        progressRingCircle.style.strokeDashoffset = initialOffset; // Reset the strokeDashoffset
+        document.getElementById('processing').style.display = 'block';
+        startProcessingAnimation();
+
         var formData = new FormData();
         formData.append('audiofile', files[0]);
         var xhr = new XMLHttpRequest();
         xhr.open('POST', '/upload', true);
         xhr.responseType = 'blob';
-        xhr.upload.onprogress = function(e) {
-            if (e.lengthComputable) {
-                var percentComplete = (e.loaded / e.total) * 100;
-                var offset = initialOffset - (percentComplete / 100) * initialOffset;
-                progressRingCircle.style.strokeDashoffset = offset;
-            }
-        };
         xhr.onloadstart = function(e) {
-            document.querySelector('.progress-ring').style.display = 'block';
+            document.querySelector('.upload-btn').style.display = 'none';
         };
         xhr.onloadend = function(e) {
-            document.querySelector('.progress-ring').style.display = 'none';
             document.querySelector('.upload-btn').style.display = 'block';
         };
         xhr.onload = function() {
@@ -90,6 +142,34 @@
             a.click();
             window.URL.revokeObjectURL(url);
             document.body.removeChild(a);
+            document.getElementById('processing').style.display = 'none';
+            stopProcessingAnimation();
+            var toast = document.createElement('div');
+            toast.textContent = 'File "' + a.download + '" has been downloaded.';
+            toast.style.position = 'fixed';
+            toast.style.bottom = '50px';
+            toast.style.right = '20px';
+            toast.style.padding = '20px';
+            toast.style.backgroundColor = 'green';
+            toast.style.zIndex = '2005';
+            toast.style.borderRadius = '5px';
+            toast.style.color = 'white';
+            toast.style.boxShadow = '0px 0px 10px rgba(0, 0, 0, 0.5)'; // Add box shadow
+            toast.style.webkitBoxShadow = '0px 0px 10px rgba(0, 0, 0, 0.5)'; // Add webkit box shadow for older browsers
+            toast.style.opacity = '0'; // Start invisible
+            toast.style.transition = 'opacity 0.3s ease-in-out'; // Add transition
+            document.body.appendChild(toast);
+            requestAnimationFrame(function() {
+                requestAnimationFrame(function() {
+                    toast.style.opacity = '1'; // Fade in
+                });
+            });
+            setTimeout(function() {
+                toast.style.opacity = '0'; // Start fade out
+                setTimeout(function() {
+                    document.body.removeChild(toast);
+                }, 300); // Remove after transition is done
+            }, 5000);
         };
         xhr.send(formData);
     }
