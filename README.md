@@ -8,5 +8,5 @@ https://nightcore.me
 ## Requirements:
 
 ```
-pip3 install flask nightcore
+pip3 install flask nightcore pytz
 ```

@@ -1,1 +1,4 @@
 __pycache__
+log.log
+*.wav
+*.mp3

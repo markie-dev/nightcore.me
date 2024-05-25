@@ -6,6 +6,9 @@ import nightcore as nc
 import mimetypes
 from flask import Flask, request, send_file, render_template
 from werkzeug.utils import secure_filename
+import logging
+import datetime
+import pytz
 
 app = Flask(__name__)
 
@@ -46,11 +49,16 @@ def upload():
     nc_audio = file_stream @ nc_audio
 
     # export the nightcore version
-    nc_filename = '[Nightcore] ' + filename
+    nc_filename = 'nightcore_' + filename
     nc_audio.export(nc_filename, format="mp3")
 
     # schedule the file for deletion
     threading.Thread(target=delete_file_after_delay, args=(nc_filename,)).start()
+
+    # Log the upload
+    current_time = datetime.datetime.now(pytz.timezone('US/Central')).strftime('%I:%M%p %m/%d/%Y')
+    with open('log.log', 'a') as f:
+        f.write(f'Uploaded "{filename}" @ {current_time}\n')
 
     # send the file back to the user
     return send_file(

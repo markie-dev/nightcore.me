@@ -22,14 +22,20 @@
 <div class="hero">
     <h1 class="hero-text">nightcore any song with the click of a button.</h1>
 </div>
-<form method="post" action="/upload" enctype="multipart/form-data" class="form">
-    <label class="upload-btn">
-        <i class="fa-solid fa-arrow-up-from-bracket"></i>
-        <a style="padding-left: 10px;">Upload File</a>
-        <input type="file" name="audiofile" accept="audio/*" style="display: none;" onchange="document.getElementById('submit-btn').click();">
-    </label>
-    <input type="submit" id="submit-btn" style="display: none;">
-</form>
+<div class="upload-wrapper">
+    <form method="post" action="/upload" enctype="multipart/form-data" class="form">
+        <label class="upload-btn">
+            <i class="fa-solid fa-arrow-up-from-bracket"></i>
+            <a style="padding-left: 10px;">Upload File</a>
+            <input type="file" name="audiofile" accept="audio/*" style="display: none;" onchange="document.getElementById('submit-btn').click();">
+        </label>
+        <input type="submit" id="submit-btn" style="display: none;">
+    </form>
+    <svg class="progress-ring" width="130" height="130" viewBox="0 0 130 130">
+        <circle class="progress-ring__circle" stroke="white" stroke-width="5" fill="transparent" r="58" cx="65" cy="65"/>
+    </svg>
+</div>
+
 <div class="blur-background"></div>
 <div class="circle-container">
     <div class="circle2 purple"></div>
@@ -40,5 +46,54 @@
 <footer class="footer-banner">
     2024 &copy; markie-dev
 </footer>
+
+<script>
+    document.body.addEventListener('dragover', function(e) {
+        e.preventDefault();
+    });
+
+    document.body.addEventListener('drop', function(e) {
+    e.preventDefault();
+    var files = e.dataTransfer.files;
+    if (files.length > 0) {
+        document.querySelector('.upload-btn').style.display = 'none';
+        var progressRingCircle = document.querySelector('.progress-ring__circle');
+        var initialOffset = 365;
+        progressRingCircle.style.strokeDashoffset = initialOffset; // Reset the strokeDashoffset
+        var formData = new FormData();
+        formData.append('audiofile', files[0]);
+        var xhr = new XMLHttpRequest();
+        xhr.open('POST', '/upload', true);
+        xhr.responseType = 'blob';
+        xhr.upload.onprogress = function(e) {
+            if (e.lengthComputable) {
+                var percentComplete = (e.loaded / e.total) * 100;
+                var offset = initialOffset - (percentComplete / 100) * initialOffset;
+                progressRingCircle.style.strokeDashoffset = offset;
+            }
+        };
+        xhr.onloadstart = function(e) {
+            document.querySelector('.progress-ring').style.display = 'block';
+        };
+        xhr.onloadend = function(e) {
+            document.querySelector('.progress-ring').style.display = 'none';
+            document.querySelector('.upload-btn').style.display = 'block';
+        };
+        xhr.onload = function() {
+            var blob = new Blob([xhr.response], { type: 'audio/mp3' });
+            var url = window.URL.createObjectURL(blob);
+            var a = document.createElement('a');
+            a.style.display = 'none';
+            a.href = url;
+            a.download = 'nightcore_' + files[0].name;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+        };
+        xhr.send(formData);
+    }
+});
+</script>
 </body>
 </html>

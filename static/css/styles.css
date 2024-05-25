@@ -168,6 +168,35 @@ html, body {
     z-index: 1001;
 }
 
+.progress-ring {
+  display: none;
+  position: relative; /* Add this */
+  z-index: 2000;
+}
+
+.upload-btn {
+  display: block;
+}
+
+.upload-wrapper {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  position: relative; /* Add this if the wrapper is not positioned */
+  padding : 20px;
+}
+
+.progress-ring__circle {
+  stroke: #333; /* Change this to the color you want */
+  stroke-width: 6;
+  fill: transparent;
+  stroke-dasharray: 365;
+  stroke-dashoffset: 365;
+  transition: stroke-dashoffset 1s linear; /* Change this to control the animation speed */
+  transform: rotate(-90deg);
+  transform-origin: 50% 50%;
+}
+
 .upload-btn {
     font-family: 'Inter', sans-serif;
     font-size: 1rem;
