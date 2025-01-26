@@ -12,6 +12,8 @@ import {
   DropdownMenuItem,
 } from "@/components/ui/dropdown-menu";
 import { getFFmpegHelper } from "@/app/utils/ffmpeg.helper";
+import LinkBar from "@/app/components/LinkBar";
+import Image from 'next/image';
 
 
 function bufferToWaveBlob(buffer: AudioBuffer) {
@@ -98,6 +100,7 @@ export default function UploadArea() {
 
   
   const [isScrubbing, setIsScrubbing] = useState(false);
+  const [thumbnail, setThumbnail] = useState<string | null>(null);
 
   const togglePlayPause = useCallback(() => {
     if (!playerRef.current) return;
@@ -383,6 +386,56 @@ export default function UploadArea() {
     return `${m}:${s < 10 ? "0" : ""}${s}`;
   }
 
+  const handleYouTubeAudio = async (buffer: AudioBuffer, title?: string, thumbnail?: string) => {
+    try {
+      if (playerRef.current) {
+        playerRef.current.dispose();
+        playerRef.current = null;
+      }
+
+      setIsUploaded(true);
+      setFileName(title || "YouTube Audio");
+      setThumbnail(thumbnail || null);
+      setDuration(buffer.duration);
+      
+      const newPlayer = new Tone.Player({
+        url: buffer,
+        onload: () => {
+          console.log('Player loaded');
+        }
+      }).toDestination();
+
+      
+      newPlayer.autostart = false;
+      newPlayer.playbackRate = playbackRate;
+      
+      
+      newPlayer.onstop = () => {
+        const bufferDuration = buffer.duration;
+        const elapsed = Tone.now() - startTimeRef.current;
+        const actualCurrentTime = offsetRef.current + elapsed;
+        
+        if (!isScrubbing && bufferDuration > 0 && Math.abs(actualCurrentTime - bufferDuration) < 1.2) {
+          setIsPlaying(false);
+          offsetRef.current = 0;
+          setCurrentTime(0);
+        }
+      };
+      playerRef.current = newPlayer;
+      
+      setCurrentTime(0);
+      offsetRef.current = 0;
+      setIsPlaying(false);
+
+    } catch (error) {
+      console.error('Error setting up player:', error);
+      
+      setIsUploaded(false);
+      setFileName("");
+      setThumbnail(null);
+    }
+  };
+
   /* ======================
      RENDER
   ====================== */
@@ -442,6 +495,15 @@ export default function UploadArea() {
             </div>
           </motion.div>
         </motion.div>
+        <div className="max-w-xl mx-auto px-4 my-8">
+        <motion.div 
+          initial={{ opacity: 0, scaleX: 0 }}
+          animate={{ opacity: 1, scaleX: 1 }}
+          transition={{ delay: 0.2 }}
+          className="h-px bg-gradient-to-r from-transparent via-foreground/20 to-transparent"
+        />
+      </div>
+        <LinkBar onAudioBuffer={handleYouTubeAudio} />
       </motion.div>
     );
   }
@@ -461,6 +523,7 @@ export default function UploadArea() {
           onClick={() => {
             setIsUploaded(false);
             setFileName("");
+            setThumbnail(null);
             setIsPlaying(false);
             setCurrentTime(0);
             setDuration(0);
@@ -483,6 +546,24 @@ export default function UploadArea() {
         animate={{ opacity: 1 }}
         transition={{ delay: 0.1 }}
       >
+        {/* Thumbnail */}
+        {thumbnail && (
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="relative w-full aspect-square max-w-[240px] mx-auto mb-4 rounded-lg overflow-hidden"
+          >
+            <Image
+              src={thumbnail}
+              alt="Video thumbnail"
+              fill
+              className="object-cover"
+              sizes="(max-width: 240px) 100vw, 240px"
+              priority
+            />
+          </motion.div>
+        )}
+
         {/* File name */}
         <div className="text-left">
           <h3 className="font-medium text-lg truncate" title={fileName}>
