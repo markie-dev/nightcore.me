@@ -6,6 +6,7 @@ import { Inter } from "next/font/google";
 import AnimatedBackground from "./components/AnimatedBackground";
 import AnimatedFooter from "./components/AnimatedFooter";
 import Script from "next/script";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -49,6 +50,7 @@ export default function RootLayout({
           <Navbar />
           {children}
           <AnimatedFooter />
+          <SpeedInsights />
         </ThemeProvider>
       </body>
     </html>
