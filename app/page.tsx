@@ -13,7 +13,7 @@ export default function Home() {
       <AnimatedHeading 
         as="h3" 
         delay={0.1} 
-        className="text-xl font-medium text-center pt-4"
+        className="text-xl font-medium text-foreground/60 text-center pt-4"
       >
         nightcore any song with a click of a button.
       </AnimatedHeading>

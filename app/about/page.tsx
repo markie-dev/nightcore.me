@@ -17,13 +17,13 @@ export default function About() {
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3, delay: 0.1, ease: "easeOut" }}
-        className="mt-8 text-center max-w-2xl mx-auto"
+        className="mt-4 text-center max-w-2xl mx-auto"
       >
         <motion.p 
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.5, delay: 0.2 }}
-          className="text-lg mb-6"
+          className="text-lg mb-8 text-foreground/60"
         >
           all audio processing is done directly in your browser - no server required.
           your files never leave your device, ensuring complete privacy.
