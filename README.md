@@ -15,3 +15,4 @@ Web application that lets you nightcore/speed up any audio file directly in your
 ## Credits
 
 - [ffmpeg.audio.wasm](https://github.com/JorenSix/ffmpeg.audio.wasm) by JorenSix at IPEM, Ghent University
+- [Tone.js](https://github.com/Tonejs/Tone.js) by Yotam Mann
