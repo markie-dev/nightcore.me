@@ -10,7 +10,7 @@ export default function AnimatedFooter() {
       transition={{ duration: 0.3, delay: 0.2, ease: "easeOut" }}
       className="p-4 fixed bottom-0 w-full text-center text-sm text-muted-foreground"
     >
-      2025 © markle-dev
+      2025 © markie-dev
     </motion.footer>
   );
 } 
