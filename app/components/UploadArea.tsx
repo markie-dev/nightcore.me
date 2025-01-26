@@ -68,7 +68,6 @@ export default function UploadArea() {
       if (audioRef.current && audioContextRef.current) {
         if (!sourceNodeRef.current) {
           sourceNodeRef.current = audioContextRef.current.createMediaElementSource(audioRef.current);
-          // Direct connection without AudioWorklet
           sourceNodeRef.current.connect(audioContextRef.current.destination);
         }
       }
