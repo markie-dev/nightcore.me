@@ -12,13 +12,6 @@ Web application that lets you nightcore/speed up any audio file directly in your
 - Export as WAV (lossless) or MP3
 - Multiple playback speeds (0.75x to 2x)
 
-## Stack
-
-- Next.js
-- Tailwind CSS
-- shadcn/ui
-- ffmpeg.audio.wasm
-
 ## Credits
 
 - [ffmpeg.audio.wasm](https://github.com/JorenSix/ffmpeg.audio.wasm) by JorenSix at IPEM, Ghent University
