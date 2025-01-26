@@ -1,350 +1,391 @@
-'use client';
+"use client";
 
-import { Play, Pause, SkipBack, Download, Upload, Waveform, Headphones, Speedometer, X, Check } from "@phosphor-icons/react";
-import { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
+import * as Tone from "tone";
+import { Play, Pause, SkipBack, Download, Upload, Speedometer, X, Check, Waveform, Headphones } from "@phosphor-icons/react";
 import { useTheme } from "next-themes";
-import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
-import { getFFmpegHelper } from "@/app/utils/ffmpeg.helper";
 import { motion, AnimatePresence } from "framer-motion";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from "@/components/ui/dropdown-menu";
+import { getFFmpegHelper } from "@/app/utils/ffmpeg.helper";
 
-declare global {
-  interface Window {
-    webkitAudioContext: typeof AudioContext;
+
+function bufferToWaveBlob(buffer: AudioBuffer) {
+  const numOfChan = buffer.numberOfChannels;
+  const length = buffer.length * numOfChan * 2 + 44;
+  const bufferArray = new ArrayBuffer(length);
+  const view = new DataView(bufferArray);
+  const channels: Float32Array[] = [];
+  let offset = 0;
+  let pos = 0;
+
+  function setUint16(data: number) {
+    view.setUint16(pos, data, true);
+    pos += 2;
   }
+  function setUint32(data: number) {
+    view.setUint32(pos, data, true);
+    pos += 4;
+  }
+
+  
+  setUint32(0x46464952); 
+  setUint32(length - 8);
+  setUint32(0x45564157); 
+
+  
+  setUint32(0x20746d66); 
+  setUint32(16);
+  setUint16(1);
+  setUint16(numOfChan);
+  setUint32(buffer.sampleRate);
+  setUint32(buffer.sampleRate * 2 * numOfChan);
+  setUint16(numOfChan * 2);
+  setUint16(16);
+
+  
+  setUint32(0x61746164); 
+  setUint32(length - pos - 4);
+
+  for (let i = 0; i < numOfChan; i++) {
+    channels.push(buffer.getChannelData(i));
+  }
+
+  while (pos < length) {
+    for (let i = 0; i < numOfChan; i++) {
+      const sample = Math.max(-1, Math.min(1, channels[i][offset]));
+      view.setInt16(pos, sample < 0 ? sample * 0x8000 : sample * 0x7fff, true);
+      pos += 2;
+    }
+    offset++;
+  }
+  return new Blob([bufferArray], { type: "audio/wav" });
 }
 
 export default function UploadArea() {
   const { theme } = useTheme();
   const playedColor = theme === "dark" ? "#d1d5db" : "#4b5563";
-  const thumbColor = theme === "dark" ? "#d1d5db" : "#6b7280";
   const futureColor = theme === "dark" ? "#1f2937" : "#9ca3af";
 
   const [isUploaded, setIsUploaded] = useState(false);
+  const [fileName, setFileName] = useState("");
   const [isPlaying, setIsPlaying] = useState(false);
+
+  
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
-  const [playbackRate, setPlaybackRate] = useState(1.25);
-  const audioRef = useRef<HTMLAudioElement>(null);
-  const [audioUrl, setAudioUrl] = useState<string | null>(null);
-  const audioContextRef = useRef<AudioContext | null>(null);
-  const sourceNodeRef = useRef<MediaElementAudioSourceNode | null>(null);
-  const [fileName, setFileName] = useState<string>("");
-  const [isConverting, setIsConverting] = useState(false);
-  const [downloadState, setDownloadState] = useState<'idle' | 'loading' | 'success'>('idle');
 
+  
+  
+  const startTimeRef = useRef<number>(0);  
+  const offsetRef = useRef<number>(0);     
+  const requestRef = useRef<number>(0);
+
+  
+  const playerRef = useRef<Tone.Player | null>(null);
+
+  
+  const [playbackRate, setPlaybackRate] = useState(1.25);
   const playbackRates = [0.75, 1, 1.25, 1.5, 2];
 
-  const togglePlayPause = () => {
-    if (audioRef.current) {
-      if (!audioRef.current.paused) {
-        audioRef.current.pause();
-        setIsPlaying(false);
-      } else {
-        if (audioContextRef.current?.state === 'suspended') {
-          audioContextRef.current.resume();
-        }
-        if (audioRef.current) {
-          setCurrentTime(audioRef.current.currentTime);
-          audioRef.current.play().then(() => {
-            if (audioRef.current) {
-              setCurrentTime(audioRef.current.currentTime);
-            }
-          }).catch(console.error);
-        }
-        setIsPlaying(true);
-      }
-      (document.activeElement as HTMLElement)?.blur();
+  
+  const [isConverting, setIsConverting] = useState(false);
+  const [downloadState, setDownloadState] = useState<"idle" | "loading" | "success">("idle");
+
+  
+  const [isScrubbing, setIsScrubbing] = useState(false);
+
+  const togglePlayPause = useCallback(() => {
+    if (!playerRef.current) return;
+    if (playerRef.current.state === "started") {
+      pause();
+    } else {
+      play();
     }
-  };
-
-  const handleFileUpload = async (file: File) => {
-    const url = URL.createObjectURL(file);
-    setAudioUrl(url);
-    setIsUploaded(true);
-    setFileName(file.name);
-    setPlaybackRate(1.25);
-
-    setTimeout(() => {
-      if (audioRef.current && audioContextRef.current) {
-        if (!sourceNodeRef.current) {
-          sourceNodeRef.current = audioContextRef.current.createMediaElementSource(audioRef.current);
-          sourceNodeRef.current.connect(audioContextRef.current.destination);
-        }
-      }
-    }, 0);
-  };
-
-  useEffect(() => {
-    audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
     
-    const handleKeyPress = (e: KeyboardEvent) => {
-      if (e.code === 'Space') {
-        e.preventDefault();
-        e.stopPropagation();
+    (document.activeElement as HTMLElement)?.blur();
+  }, []);
+
+  /* ======================
+     KEYBOARD CONTROLS
+  ====================== */
+  useEffect(() => {
+    function handleKeyPress(e: KeyboardEvent) {
+      if (e.code !== 'Space') return;
+      e.stopPropagation();
+      e.preventDefault();
+      (document.activeElement as HTMLElement)?.blur();
+      
+      if (isUploaded) {
         togglePlayPause();
       }
+    }
+
+    document.addEventListener('keydown', handleKeyPress, true);
+    return () => {
+      document.removeEventListener('keydown', handleKeyPress, true);
+    };
+  }, [isUploaded, togglePlayPause]);
+
+  /* ======================
+     FILE UPLOAD
+  ====================== */
+  function handleFileUpload(file: File) {
+    if (!file) return;
+
+    const url = URL.createObjectURL(file);
+
+    
+    if (playerRef.current) {
+      playerRef.current.dispose();
+      playerRef.current = null;
+    }
+
+    
+    const newPlayer = new Tone.Player(url, () => {
+      setIsUploaded(true);
+      setFileName(file.name);
+
+      const rawBuffer = newPlayer.buffer?.get();
+      if (!rawBuffer) {
+        console.error("Failed to get audio buffer");
+        return;
+      }
+      setDuration(rawBuffer.duration);
+    }).toDestination();
+
+    
+    newPlayer.onstop = () => {
+      const rawBuffer = newPlayer.buffer?.get();
+      const bufferDuration = rawBuffer?.duration || 0;
+      
+      
+      const elapsed = Tone.now() - startTimeRef.current;
+      const actualCurrentTime = offsetRef.current + elapsed;
+      
+      
+      if (!isScrubbing && bufferDuration > 0 && Math.abs(actualCurrentTime - bufferDuration) < 1.2) {
+        setIsPlaying(false);
+        offsetRef.current = 0;
+        setCurrentTime(0);
+      }
     };
 
-    document.addEventListener('keydown', handleKeyPress, { capture: true });
+    newPlayer.autostart = false;
+    newPlayer.playbackRate = playbackRate;
+    playerRef.current = newPlayer;
+  }
+
+  /* ======================
+     PLAY / PAUSE
+  ====================== */
+  function play() {
+    const player = playerRef.current;
+    if (!player) return;
+    if (Tone.context.state === "suspended") {
+      Tone.context.resume();
+    }
+    
+    
+    player.start(undefined, offsetRef.current);
+    startTimeRef.current = Tone.now();
+    setIsPlaying(true);
+  }
+
+  function pause() {
+    const player = playerRef.current;
+    if (!player) return;
+    
+    const elapsed = Tone.now() - startTimeRef.current;
+    offsetRef.current += elapsed; 
+    player.stop(); 
+    setIsPlaying(false);
+  }
+
+  /* ======================
+     TIME TRACKING
+  ====================== */
+  useEffect(() => {
+    function updateTime() {
+      if (playerRef.current && playerRef.current.state === "started") {
+        const elapsed = Tone.now() - startTimeRef.current;
+        const newTime = offsetRef.current + elapsed;
+        
+        
+        if (Math.abs(newTime - currentTime) > 0.1) {
+          setCurrentTime(newTime);
+        }
+      }
+      requestRef.current = requestAnimationFrame(updateTime);
+    }
+    requestRef.current = requestAnimationFrame(updateTime);
 
     return () => {
-      if (sourceNodeRef.current) {
-        sourceNodeRef.current.disconnect();
-      }
-      if (audioContextRef.current) {
-        audioContextRef.current.close();
-      }
-      document.removeEventListener('keydown', handleKeyPress, { capture: true });
+      cancelAnimationFrame(requestRef.current);
     };
-  }, []);
+  }, [duration, currentTime]);
 
-  useEffect(() => {
-    if (audioRef.current && isUploaded) {
-      updatePitch(playbackRate);
+  /* ======================
+     SCRUBBING
+  ====================== */
+  function handleSliderChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const newTime = parseFloat(e.target.value);
+    const player = playerRef.current;
+    if (!player) return;
+
+    setIsScrubbing(true);  
+    
+    const wasPlaying = player.state === "started";
+    if (wasPlaying) {
+      player.stop();
     }
-  }, [playbackRate, isUploaded]);
+    
+    
+    offsetRef.current = newTime;
+    setCurrentTime(newTime);
+    startTimeRef.current = Tone.now();
 
-  const updatePitch = (rate: number) => {
-    if (audioRef.current) {
-      if (audioContextRef.current?.state === 'suspended') {
-        audioContextRef.current.resume();
-      }
-
-      if (rate > 1) {
-        audioRef.current.preservesPitch = false;
-      } else {
-        audioRef.current.preservesPitch = true;
-      }
-      
-      audioRef.current.playbackRate = rate;
-      setPlaybackRate(rate);
+    
+    if (wasPlaying) {
+      player.start(undefined, newTime);
+      setIsPlaying(true);
     }
-  };
 
-  const handlePlaybackRateChange = (rate: number) => {
-    updatePitch(rate);
+    
+    setTimeout(() => setIsScrubbing(false), 500);
+  }
+
+  function handleRestart() {
+    const player = playerRef.current;
+    if (!player) return;
+
+    
+    const wasPlaying = player.state === "started";
+
+    
+    player.stop();
+    offsetRef.current = 0;
+    setCurrentTime(0);
+    setIsPlaying(false);
+    
     (document.activeElement as HTMLElement)?.blur();
-  };
 
-  useEffect(() => {
-    const audio = audioRef.current;
-    if (audio) {
-      let animationFrameId: number;
-      
-      const updateTime = () => {
-        if (audio) {
-          setCurrentTime(audio.currentTime);
-          if (!audio.paused) {
-            animationFrameId = requestAnimationFrame(updateTime);
-          }
-        }
-      };
-
-      const handlePlay = () => {
-        animationFrameId = requestAnimationFrame(updateTime);
-      };
-
-      const handlePause = () => {
-        cancelAnimationFrame(animationFrameId);
-      };
-
-      audio.addEventListener('play', handlePlay);
-      audio.addEventListener('pause', handlePause);
-      audio.addEventListener('seeking', updateTime);
-      audio.addEventListener('seeked', updateTime);
-      
-      return () => {
-        if (audio) {
-          audio.removeEventListener('play', handlePlay);
-          audio.removeEventListener('pause', handlePause);
-          audio.removeEventListener('seeking', updateTime);
-          audio.removeEventListener('seeked', updateTime);
-        }
-        cancelAnimationFrame(animationFrameId);
-      };
+    
+    if (wasPlaying) {
+      play();
     }
-  }, []);
+  }
 
-  const handleSliderChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const time = parseFloat(e.target.value);
-    if (audioRef.current) {
-      audioRef.current.currentTime = time;
-      setCurrentTime(time);
+  /* ======================
+     PLAYBACK RATE
+  ====================== */
+  function handlePlaybackRateChange(rate: number) {
+    setPlaybackRate(rate);
+    if (playerRef.current) {
+      playerRef.current.playbackRate = rate;
     }
-  };
+    
+    (document.activeElement as HTMLElement)?.blur();
+  }
 
-  const handleRestart = () => {
-    if (audioRef.current) {
-      audioRef.current.currentTime = 0;
-      setCurrentTime(0);
-      (document.activeElement as HTMLElement)?.blur();
-    }
-  };
-
-  const formatTime = (time: number) => {
-    const minutes = Math.floor(time / 60);
-    const seconds = Math.floor(time % 60);
-    return `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
-  };
-
-  const convertToMP3 = async (audioBuffer: AudioBuffer): Promise<Blob> => {
+  /* ======================
+     OFFLINE RENDER & EXPORT
+  ====================== */
+  async function convertToMP3(buffer: AudioBuffer): Promise<Blob> {
     setIsConverting(true);
     try {
       const ffmpeg = await getFFmpegHelper();
-      
-      const wavBlob = bufferToWaveBlob(audioBuffer);
+      const wavBlob = bufferToWaveBlob(buffer);
       const wavData = new Uint8Array(await wavBlob.arrayBuffer());
-      
-      await ffmpeg.writeFile('input.wav', wavData);
-      await ffmpeg.run([
-        '-i', 'input.wav',
-        '-codec:a', 'libmp3lame',
-        '-qscale:a', '2',
-        'output.mp3'
-      ]);
 
-      const mp3Data = await ffmpeg.readFile('output.mp3');
+      await ffmpeg.writeFile("input.wav", wavData);
+      await ffmpeg.run(["-i", "input.wav", "-codec:a", "libmp3lame", "-qscale:a", "2", "output.mp3"]);
 
-      await ffmpeg.deleteFile('input.wav');
-      await ffmpeg.deleteFile('output.mp3');
+      const mp3Data = await ffmpeg.readFile("output.mp3");
+      await ffmpeg.deleteFile("input.wav");
+      await ffmpeg.deleteFile("output.mp3");
 
-      return new Blob([mp3Data], { type: 'audio/mp3' });
-    } catch (error) {
-      console.error('Error converting to MP3:', error);
-      throw error;
+      return new Blob([mp3Data], { type: "audio/mp3" });
     } finally {
       setIsConverting(false);
     }
-  };
+  }
 
-  const handleDownload = async (format: 'wav' | 'mp3') => {
-    if (!audioUrl || !fileName || !audioContextRef.current) {
-      console.error('Missing required data for download');
+  async function handleDownload(format: "wav" | "mp3") {
+    const player = playerRef.current;
+    if (!player || !fileName || !player.buffer) {
+      console.warn("Missing player or buffer or fileName");
       return;
     }
-    
+
     try {
-      console.log('Starting download process...');
-      setDownloadState('loading');
-      
-      const startTime = Date.now();
+      setDownloadState("loading");
       const MIN_LOADING_TIME = 500;
+      const startTime = Date.now();
 
-      console.log('Fetching audio data...');
-      const response = await fetch(audioUrl);
-      if (!response.ok) {
-        throw new Error(`Failed to fetch audio file: ${response.status}`);
-      }
       
-      const arrayBuffer = await response.arrayBuffer();
-      const audioBuffer = await audioContextRef.current.decodeAudioData(arrayBuffer);
+      const originalBuffer = player.buffer?.get();
+      if (!originalBuffer) {
+        console.error("Failed to get original buffer");
+        return;
+      }
+      const durationSeconds = originalBuffer.duration / playbackRate;
 
-      const offlineContext = new OfflineAudioContext({
-        numberOfChannels: audioBuffer.numberOfChannels,
-        length: Math.ceil(audioBuffer.length * (1 / playbackRate)),
-        sampleRate: audioBuffer.sampleRate
-      });
-
-      const source = offlineContext.createBufferSource();
-      source.buffer = audioBuffer;
-      source.playbackRate.value = playbackRate;
-      source.connect(offlineContext.destination);
-
-      source.start(0);
-
-      try {
-        const renderedBuffer = await offlineContext.startRendering();
-
-        let blob;
-        if (format === 'wav') {
-          blob = bufferToWaveBlob(renderedBuffer);
-        } else {
-          blob = await convertToMP3(renderedBuffer);
-        }
-
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        const rateString = playbackRate.toString().replace('.', '_');
-        link.download = `${fileName.split('.').slice(0, -1).join('.')}_${rateString}.${format}`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        URL.revokeObjectURL(url);
-
-        const processingTime = Date.now() - startTime;
-        if (processingTime < MIN_LOADING_TIME) {
-          await new Promise(resolve => setTimeout(resolve, MIN_LOADING_TIME - processingTime));
-        }
-
-        console.log('Download completed successfully');
-        setDownloadState('success');
+      
+      const renderedBuffer = await Tone.Offline(() => {
         
-        setTimeout(() => {
-          setDownloadState('idle');
-        }, 2000);
+        const offPlayer = new Tone.Player(originalBuffer).toDestination();
+        offPlayer.playbackRate = playbackRate;
+        offPlayer.start(0);
+      }, durationSeconds);
 
-      } catch (renderError) {
-        console.error('Rendering error:', renderError);
-        throw renderError;
+      
+      let finalBlob: Blob;
+      if (format === "wav") {
+        finalBlob = bufferToWaveBlob(renderedBuffer.get() as AudioBuffer);
+      } else {
+        finalBlob = await convertToMP3(renderedBuffer.get() as AudioBuffer);
       }
-    } catch (error) {
-      console.error('Download error:', error);
-      setDownloadState('idle');
-    }
-  };
 
-  const bufferToWaveBlob = (buffer: AudioBuffer) => {
-    const numOfChan = buffer.numberOfChannels;
-    const length = buffer.length * numOfChan * 2 + 44;
-    const bufferArray = new ArrayBuffer(length);
-    const view = new DataView(bufferArray);
-    const channels = [];
-    let offset = 0;
-    let pos = 0;
+      
+      const url = URL.createObjectURL(finalBlob);
+      const link = document.createElement("a");
+      link.href = url;
+      const rateStr = playbackRate.toString().replace(".", "_");
+      link.download = `${fileName.replace(/\.\w+$/, "")}_${rateStr}x.${format}`;
+      link.click();
+      URL.revokeObjectURL(url);
 
-    setUint32(0x46464952);
-    setUint32(length - 8);
-    setUint32(0x45564157);
-
-    setUint32(0x20746d66);
-    setUint32(16);
-    setUint16(1);
-    setUint16(numOfChan);
-    setUint32(buffer.sampleRate);
-    setUint32(buffer.sampleRate * 2 * numOfChan);
-    setUint16(numOfChan * 2);
-    setUint16(16);
-
-    setUint32(0x61746164);
-    setUint32(length - pos - 4);
-
-    for (let i = 0; i < buffer.numberOfChannels; i++) {
-      channels.push(buffer.getChannelData(i));
-    }
-
-    while (pos < length) {
-      for (let i = 0; i < numOfChan; i++) {
-        const sample = Math.max(-1, Math.min(1, channels[i][offset]));
-        view.setInt16(pos, sample < 0 ? sample * 0x8000 : sample * 0x7fff, true);
-        pos += 2;
+      
+      const elapsed = Date.now() - startTime;
+      if (elapsed < MIN_LOADING_TIME) {
+        await new Promise((res) => setTimeout(res, MIN_LOADING_TIME - elapsed));
       }
-      offset++;
+      setDownloadState("success");
+      setTimeout(() => setDownloadState("idle"), 2000);
+    } catch (err) {
+      console.error(err);
+      setDownloadState("idle");
     }
+  }
 
-    return new Blob([bufferArray], { type: 'audio/wav' });
+  /* ======================
+     FORMAT TIME
+  ====================== */
+  function formatTime(t: number) {
+    if (!Number.isFinite(t)) return "0:00";
+    const m = Math.floor(t / 60);
+    const s = Math.floor(t % 60);
+    return `${m}:${s < 10 ? "0" : ""}${s}`;
+  }
 
-    function setUint16(data: number) {
-      view.setUint16(pos, data, true);
-      pos += 2;
-    }
-
-    function setUint32(data: number) {
-      view.setUint32(pos, data, true);
-      pos += 4;
-    }
-  };
-
+  /* ======================
+     RENDER
+  ====================== */
   if (!isUploaded) {
     return (
       <motion.div 
@@ -359,30 +400,30 @@ export default function UploadArea() {
           whileTap={{ scale: 0.98 }}
           onDragOver={(e) => {
             e.preventDefault();
-            e.currentTarget.classList.add('border-primary');
+            e.currentTarget.classList.add("border-primary");
           }}
           onDragLeave={(e) => {
             e.preventDefault();
-            e.currentTarget.classList.remove('border-primary');
+            e.currentTarget.classList.remove("border-primary");
           }}
           onDrop={(e) => {
             e.preventDefault();
-            e.currentTarget.classList.remove('border-primary');
+            e.currentTarget.classList.remove("border-primary");
             const file = e.dataTransfer.files[0];
-            if (file && (file.type.startsWith('audio/') || file.name.match(/\.(mp3|wav|m4a|aac|ogg)$/i))) {
+            if (file && (file.type.startsWith("audio/") || file.name.match(/\.(mp3|wav|m4a|aac|ogg)$/i))) {
               handleFileUpload(file);
             } else {
-              console.warn('Please upload an audio file');
+              console.warn("Please upload an audio file");
             }
           }}
           onClick={() => {
-            const input = document.createElement('input');
-            input.type = 'file';
-            input.accept = 'audio/*,.mp3,.wav,.m4a,.aac,.ogg';
+            const input = document.createElement("input");
+            input.type = "file";
+            input.accept = "audio/*,.mp3,.wav,.m4a,.aac,.ogg";
             input.onchange = (e) => {
-              const file = (e.target as HTMLInputElement).files?.[0];
-              if (file && (file.type.startsWith('audio/') || file.name.match(/\.(mp3|wav|m4a|aac|ogg)$/i))) {
-                handleFileUpload(file);
+              const f = (e.target as HTMLInputElement).files?.[0];
+              if (f && (f.type.startsWith("audio/") || f.name.match(/\.(mp3|wav|m4a|aac|ogg)$/i))) {
+                handleFileUpload(f);
               }
             };
             input.click();
@@ -394,9 +435,7 @@ export default function UploadArea() {
             animate={{ opacity: 1 }}
             transition={{ delay: 0.1, duration: 0.2 }}
           >
-            <div>
-              <Upload className="w-8 h-8 opacity-60" />
-            </div>
+            <Upload className="w-8 h-8 opacity-60" />
             <div>
               <p className="text-lg font-medium">Drop your audio file here</p>
               <p className="text-sm text-muted-foreground mt-1">or click to select a file</p>
@@ -407,23 +446,29 @@ export default function UploadArea() {
     );
   }
 
+  
   return (
     <motion.div 
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       className="mt-12 max-w-xl mx-auto p-4 bg-gray-50/50 dark:bg-gray-100/10 rounded-lg"
     >
+      {/* Close / Remove file */}
       <div className="flex justify-end">
-        <motion.button 
+        <motion.button
           whileHover={{ scale: 1.1 }}
           whileTap={{ scale: 0.9 }}
           onClick={() => {
             setIsUploaded(false);
-            setAudioUrl(null);
             setFileName("");
             setIsPlaying(false);
             setCurrentTime(0);
             setDuration(0);
+            offsetRef.current = 0;
+            if (playerRef.current) {
+              playerRef.current.dispose();
+              playerRef.current = null;
+            }
           }}
           className="p-1.5 rounded-md hover:bg-gray-100/10 text-muted-foreground transition-colors"
         >
@@ -431,58 +476,46 @@ export default function UploadArea() {
         </motion.button>
       </div>
 
-      <audio
-        ref={audioRef}
-        src={audioUrl || ''}
-        onTimeUpdate={() => {
-          if (audioRef.current) {
-            setCurrentTime(audioRef.current.currentTime);
-          }
-        }}
-        onEnded={() => setIsPlaying(false)}
-        onLoadedMetadata={() => {
-          if (audioRef.current) {
-            setDuration(audioRef.current.duration);
-            updatePitch(playbackRate);
-          }
-        }}
-      />
-      
+      {/* Main UI */}
       <motion.div 
         className="flex flex-col gap-2 px-2"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.1 }}
       >
+        {/* File name */}
         <div className="text-left">
           <h3 className="font-medium text-lg truncate" title={fileName}>
             {fileName}
           </h3>
         </div>
-        
+
+        {/* Time slider */}
         <div className="relative w-full">
           <input
             type="range"
-            min="0"
+            min={0}
             max={duration}
+            step="0.01"
             value={currentTime}
             onChange={handleSliderChange}
             className="w-full h-1.5 rounded-lg appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/20"
             style={{
-              background: `linear-gradient(to right, 
-                ${playedColor}50 0%, 
-                ${playedColor}50 ${((currentTime / duration) * 100) + (0.5 * (1 - currentTime/duration))}%, 
-                ${futureColor}30 ${((currentTime / duration) * 100) + (0.5 * (1 - currentTime/duration))}%, 
-                ${futureColor}30 100%)`
+              background: `linear-gradient(to right,
+                ${playedColor}50 0%,
+                ${playedColor}50 ${(currentTime / duration) * 100}%,
+                ${futureColor}30 ${(currentTime / duration) * 100}%,
+                ${futureColor}30 100%)`,
             }}
           />
         </div>
-        
+
         <div className="flex justify-between text-sm text-muted-foreground mt-1">
           <span>{formatTime(currentTime)}</span>
           <span>{formatTime(duration)}</span>
         </div>
-        
+
+        {/* Controls row */}
         <motion.div 
           className="flex items-center justify-between mt-2"
           initial={{ opacity: 0 }}
@@ -498,99 +531,96 @@ export default function UploadArea() {
             >
               <SkipBack className="w-5 h-5 text-foreground opacity-60" />
             </motion.button>
+
             <motion.button
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.9 }}
               onClick={togglePlayPause}
               className="p-2 transition-colors hover:bg-gray-100/10 rounded-md"
             >
-              {isPlaying ? (
-                <Pause className="w-6 h-6 text-foreground opacity-60" />
-              ) : (
-                <Play className="w-6 h-6 text-foreground opacity-60" />
-              )}
+              <AnimatePresence mode="wait" initial={false}>
+                {isPlaying ? (
+                  <motion.div
+                    key="pause"
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 0.6, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.8 }}
+                    transition={{ duration: 0.15, ease: "easeOut" }}
+                  >
+                    <Pause className="w-6 h-6 text-foreground" />
+                  </motion.div>
+                ) : (
+                  <motion.div
+                    key="play"
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 0.6, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.8 }}
+                    transition={{ duration: 0.15, ease: "easeOut" }}
+                  >
+                    <Play className="w-6 h-6 text-foreground" />
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </motion.button>
+
+            {/* Download button & menu */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <motion.button 
+                <motion.button
                   whileHover={{ scale: 1.1 }}
                   whileTap={{ scale: 0.9 }}
                   className="p-2 transition-colors hover:bg-gray-100/10 rounded-md relative"
-                  disabled={downloadState !== 'idle' || isConverting}
+                  disabled={downloadState === "loading"}
                 >
                   <AnimatePresence mode="wait" initial={false}>
-                    {downloadState === 'idle' && (
-                      <motion.div
-                        key="download"
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                      >
-                        <Download className="w-6 h-6 text-foreground opacity-60" />
-                      </motion.div>
-                    )}
-                    {downloadState === 'loading' && (
+                    {downloadState === "loading" ? (
                       <motion.div
                         key="loading"
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        className="relative"
-                      >
-                        <svg
-                          className="animate-spin w-6 h-6 text-foreground opacity-60"
-                          xmlns="http://www.w3.org/2000/svg"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                        >
-                          <circle
-                            className="opacity-25"
-                            cx="12"
-                            cy="12"
-                            r="10"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                          />
-                          <path
-                            className="opacity-75"
-                            fill="currentColor"
-                            d="M12 4c4.411 0 8 3.589 8 8h2c0-5.515-4.485-10-10-10v2zm0-2v2c-4.411 0-8 3.589-8 8H2c0-5.515 4.485-10 10-10z"
-                          />
-                        </svg>
-                      </motion.div>
-                    )}
-                    {downloadState === 'success' && (
+                        initial={{ opacity: 0, scale: 0.8 }}
+                        animate={{ opacity: 0.6, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.8 }}
+                        transition={{ duration: 0.15, ease: "easeOut" }}
+                        className="w-6 h-6 border-2 border-foreground border-t-transparent rounded-full animate-spin"
+                      />
+                    ) : downloadState === "success" ? (
                       <motion.div
                         key="success"
                         initial={{ opacity: 0, scale: 0.8 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        exit={{ opacity: 0 }}
+                        animate={{ opacity: 0.6, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.8 }}
+                        transition={{ duration: 0.15, ease: "easeOut" }}
+                        className="text-foreground"
                       >
-                        <Check className="w-6 h-6 text-foreground opacity-60" />
+                        <Check className="w-6 h-6" />
+                      </motion.div>
+                    ) : (
+                      <motion.div
+                        key="download"
+                        initial={{ opacity: 0, scale: 0.8 }}
+                        animate={{ opacity: 0.6, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.8 }}
+                        transition={{ duration: 0.15, ease: "easeOut" }}
+                      >
+                        <Download className="w-6 h-6" />
                       </motion.div>
                     )}
                   </AnimatePresence>
                 </motion.button>
               </DropdownMenuTrigger>
               <DropdownMenuContent>
-                <DropdownMenuItem 
-                  onClick={() => handleDownload('wav')}
-                  disabled={downloadState !== 'idle'}
-                >  
-                  <Waveform className="w-4 h-4 opacity-60" />
+                <DropdownMenuItem onClick={() => handleDownload("wav")} disabled={downloadState === "loading"}>
+                  <Waveform className="w-4 h-4 mr-2" />
                   Lossless (WAV)
                 </DropdownMenuItem>
-                <DropdownMenuItem 
-                  onClick={() => handleDownload('mp3')}
-                  disabled={downloadState !== 'idle' || isConverting}
-                >
-                  <Headphones className="w-4 h-4 opacity-60" />
-                  {isConverting ? 'Converting...' : 'Normal (MP3)'}
+                <DropdownMenuItem onClick={() => handleDownload("mp3")} disabled={downloadState === "loading"}>
+                  <Headphones className="w-4 h-4 mr-2" />
+                  {isConverting ? "Converting..." : "Normal (MP3)"}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
-          
+
+          {/* Playback speed control - desktop buttons */}
           <div className="flex gap-2">
             <div className="hidden sm:flex items-center gap-2">
               {playbackRates.map((rate) => (
@@ -631,6 +661,7 @@ export default function UploadArea() {
           </div>
         </motion.div>
       </motion.div>
+
       <style jsx>{`
         input[type='range'] {
           margin: 0;
@@ -642,7 +673,7 @@ export default function UploadArea() {
           width: 14px;
           height: 14px;
           border-radius: 50%;
-          background: ${thumbColor};
+          background: ${theme === 'dark' ? '#d1d5db' : '#4b5563'};
           cursor: pointer;
           opacity: 1;
         }
@@ -650,7 +681,7 @@ export default function UploadArea() {
           width: 14px;
           height: 14px;
           border-radius: 50%;
-          background: ${thumbColor};
+          background: ${theme === 'dark' ? '#d1d5db' : '#4b5563'};
           cursor: pointer;
           border: none;
           opacity: 1;
@@ -665,4 +696,4 @@ export default function UploadArea() {
       `}</style>
     </motion.div>
   );
-} 
+}
