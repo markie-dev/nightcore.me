@@ -1,11 +1,17 @@
 'use client';
 
-import { Play, Pause, SkipBack, Download, Upload, DownloadSimple, Waveform, Headphones, Speedometer, X, Check } from "@phosphor-icons/react";
+import { Play, Pause, SkipBack, Download, Upload, Waveform, Headphones, Speedometer, X, Check } from "@phosphor-icons/react";
 import { useState, useRef, useEffect } from "react";
 import { useTheme } from "next-themes";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { getFFmpegHelper } from "@/app/utils/ffmpeg.helper";
 import { motion, AnimatePresence } from "framer-motion";
+
+declare global {
+  interface Window {
+    webkitAudioContext: typeof AudioContext;
+  }
+}
 
 export default function UploadArea() {
   const { theme } = useTheme();
@@ -22,7 +28,6 @@ export default function UploadArea() {
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const sourceNodeRef = useRef<MediaElementAudioSourceNode | null>(null);
-  const pitchNodeRef = useRef<any>(null);
   const [fileName, setFileName] = useState<string>("");
   const [isConverting, setIsConverting] = useState(false);
   const [downloadState, setDownloadState] = useState<'idle' | 'loading' | 'success'>('idle');
@@ -48,17 +53,30 @@ export default function UploadArea() {
         }
         setIsPlaying(true);
       }
-      // blur any focused element
       (document.activeElement as HTMLElement)?.blur();
     }
   };
 
+  const handleFileUpload = async (file: File) => {
+    const url = URL.createObjectURL(file);
+    setAudioUrl(url);
+    setIsUploaded(true);
+    setFileName(file.name);
+    setPlaybackRate(1.25);
+
+    setTimeout(() => {
+      if (audioRef.current && audioContextRef.current) {
+        if (!sourceNodeRef.current) {
+          sourceNodeRef.current = audioContextRef.current.createMediaElementSource(audioRef.current);
+          // Direct connection without AudioWorklet
+          sourceNodeRef.current.connect(audioContextRef.current.destination);
+        }
+      }
+    }, 0);
+  };
+
   useEffect(() => {
-    audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
-    
-    if (audioRef.current) {
-      updatePitch(playbackRate);
-    }
+    audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
     
     const handleKeyPress = (e: KeyboardEvent) => {
       if (e.code === 'Space') {
@@ -74,36 +92,18 @@ export default function UploadArea() {
       if (sourceNodeRef.current) {
         sourceNodeRef.current.disconnect();
       }
-      if (pitchNodeRef.current) {
-        pitchNodeRef.current.disconnect();
+      if (audioContextRef.current) {
+        audioContextRef.current.close();
       }
-      audioContextRef.current?.close();
       document.removeEventListener('keydown', handleKeyPress, { capture: true });
     };
   }, []);
 
-  const handleFileUpload = async (file: File) => {
-    const url = URL.createObjectURL(file);
-    setAudioUrl(url);
-    setIsUploaded(true);
-    setFileName(file.name);
-    setPlaybackRate(1.25);
-
-    setTimeout(() => {
-      if (audioRef.current && audioContextRef.current) {
-        if (!sourceNodeRef.current) {
-          sourceNodeRef.current = audioContextRef.current.createMediaElementSource(audioRef.current);
-          
-          const pitchNode = audioContextRef.current.createScriptProcessor(4096, 1, 1);
-          pitchNodeRef.current = pitchNode;
-
-          // Connect source directly to destination for now
-          sourceNodeRef.current
-            .connect(audioContextRef.current.destination);
-        }
-      }
-    }, 0);
-  };
+  useEffect(() => {
+    if (audioRef.current && isUploaded) {
+      updatePitch(playbackRate);
+    }
+  }, [playbackRate, isUploaded]);
 
   const updatePitch = (rate: number) => {
     if (audioRef.current) {
@@ -128,13 +128,14 @@ export default function UploadArea() {
   };
 
   useEffect(() => {
-    if (audioRef.current) {
+    const audio = audioRef.current;
+    if (audio) {
       let animationFrameId: number;
       
       const updateTime = () => {
-        if (audioRef.current) {
-          setCurrentTime(audioRef.current.currentTime);
-          if (!audioRef.current.paused) {
+        if (audio) {
+          setCurrentTime(audio.currentTime);
+          if (!audio.paused) {
             animationFrameId = requestAnimationFrame(updateTime);
           }
         }
@@ -148,22 +149,22 @@ export default function UploadArea() {
         cancelAnimationFrame(animationFrameId);
       };
 
-      audioRef.current.addEventListener('play', handlePlay);
-      audioRef.current.addEventListener('pause', handlePause);
-      audioRef.current.addEventListener('seeking', updateTime);
-      audioRef.current.addEventListener('seeked', updateTime);
+      audio.addEventListener('play', handlePlay);
+      audio.addEventListener('pause', handlePause);
+      audio.addEventListener('seeking', updateTime);
+      audio.addEventListener('seeked', updateTime);
       
       return () => {
-        if (audioRef.current) {
-          audioRef.current.removeEventListener('play', handlePlay);
-          audioRef.current.removeEventListener('pause', handlePause);
-          audioRef.current.removeEventListener('seeking', updateTime);
-          audioRef.current.removeEventListener('seeked', updateTime);
+        if (audio) {
+          audio.removeEventListener('play', handlePlay);
+          audio.removeEventListener('pause', handlePause);
+          audio.removeEventListener('seeking', updateTime);
+          audio.removeEventListener('seeked', updateTime);
         }
         cancelAnimationFrame(animationFrameId);
       };
     }
-  }, [audioRef.current]);
+  }, []);
 
   const handleSliderChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const time = parseFloat(e.target.value);
@@ -432,7 +433,11 @@ export default function UploadArea() {
       <audio
         ref={audioRef}
         src={audioUrl || ''}
-        onTimeUpdate={() => {}}
+        onTimeUpdate={() => {
+          if (audioRef.current) {
+            setCurrentTime(audioRef.current.currentTime);
+          }
+        }}
         onEnded={() => setIsPlaying(false)}
         onLoadedMetadata={() => {
           if (audioRef.current) {

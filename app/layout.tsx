@@ -5,6 +5,7 @@ import Navbar from "./components/navbar";
 import { Inter } from "next/font/google";
 import AnimatedBackground from "./components/AnimatedBackground";
 import AnimatedFooter from "./components/AnimatedFooter";
+import Script from "next/script";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -21,8 +22,13 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
-        <script src="/ffmpeg/ffmpeg.core.js"></script>
-        <script
+        <Script 
+          src="/ffmpeg/ffmpeg.core.js"
+          strategy="beforeInteractive"
+        />
+        <Script
+          id="ffmpeg-init"
+          strategy="beforeInteractive"
           dangerouslySetInnerHTML={{
             __html: `
               if (typeof window !== 'undefined') {

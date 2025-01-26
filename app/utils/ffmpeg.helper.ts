@@ -1,6 +1,17 @@
+interface FFmpegCoreModule {
+  FS: {
+    mkdir: (path: string) => void;
+    writeFile: (path: string, data: Uint8Array) => void;
+    readFile: (path: string) => Uint8Array;
+    unlink: (path: string) => void;
+  };
+  exit: () => void;
+  callMain: (args: string[]) => void;
+}
+
 export class FFmpegHelper {
   private static instance: FFmpegHelper | null = null;
-  private ffmpegCore: any = null;
+  private ffmpegCore: FFmpegCoreModule | null = null;
   private ffmpegRunning: boolean = false;
   private ffmpegCurrentDuration: number | null = null;
   private runResolve: ((value: unknown) => void) | null = null;
@@ -47,7 +58,7 @@ export class FFmpegHelper {
         FFmpegHelper.worker = null;
       }
 
-      // @ts-ignore
+      // @ts-expect-error FFmpeg core is loaded via script tag and not available in types
       const { createFFmpegCore } = window;
       
       if (!createFFmpegCore) {
@@ -66,7 +77,7 @@ export class FFmpegHelper {
           }
           return path;
         }
-      }).then((Module: any) => {
+      }).then((Module: FFmpegCoreModule) => {
         this.ffmpegCore = Module;
         console.log('FFmpeg WASM module loaded successfully');
       });
@@ -154,7 +165,11 @@ export class FFmpegHelper {
     try {
       const result = await new Promise((resolve) => {
         this.runResolve = resolve;
-        this.ffmpegCore.callMain(fullArgs);
+        if (this.ffmpegCore) {
+          this.ffmpegCore.callMain(fullArgs);
+        } else {
+          throw new Error('FFmpeg core not initialized');
+        }
       });
       return result;
     } finally {
@@ -181,6 +196,7 @@ export class FFmpegHelper {
           try {
             fs.mkdir(currentPath);
           } catch (e) {
+            console.warn('Error creating directory:', e);
           }
         }
       }
