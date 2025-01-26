@@ -2,7 +2,7 @@
 
 Web application that lets you nightcore/speed up any audio file directly in your browser. No server processing required - all audio manipulation happens client-side for maximum privacy.
 
-![nightcore.me](./public/screenshot.jpeg)
+[![nightcore.me](./public/screenshot.jpeg)](https://nightcore.me)
 
 ## Features
 
