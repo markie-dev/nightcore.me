@@ -89,8 +89,8 @@ export default function UploadArea() {
   const playerRef = useRef<Tone.Player | null>(null);
 
   
-  const [playbackRate, setPlaybackRate] = useState(1.25);
-  const playbackRates = [0.75, 1, 1.25, 1.5, 2];
+  const [playbackRate, setPlaybackRate] = useState(1.15);
+  const playbackRates = [0.75, 1, 1.15, 1.25, 1.5];
 
   
   const [isConverting, setIsConverting] = useState(false);
