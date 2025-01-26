@@ -1,10 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import ytdl from '@distube/ytdl-core';
 
+type Params = {
+  params: {
+    videoId: string;
+  };
+};
+
 export async function GET(
   request: NextRequest,
-  { params }: { params: { videoId: string } }
-) {
+  { params }: Params
+): Promise<NextResponse> {
   try {
     const { videoId } = await Promise.resolve(params);
     
