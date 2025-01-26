@@ -13,7 +13,21 @@ export async function GET(
       quality: 'highestaudio'
     });
 
-    return new NextResponse(stream as any, {
+    const webStream = new ReadableStream({
+      start(controller) {
+        stream.on('data', (chunk) => {
+          controller.enqueue(chunk);
+        });
+        stream.on('end', () => {
+          controller.close();
+        });
+        stream.on('error', (err) => {
+          controller.error(err);
+        });
+      },
+    });
+
+    return new NextResponse(webStream, {
       headers: {
         'Content-Type': 'audio/mp4',
         'Transfer-Encoding': 'chunked'

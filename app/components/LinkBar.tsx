@@ -51,7 +51,7 @@ export default function LinkBar({ onAudioBuffer }: {
 
       await Tone.start();
       
-      const response = await fetch(audioFormat.url);
+      const response = await fetch(`/api/youtube/stream/${videoId}`);
       if (!response.ok) {
         throw new Error('Failed to fetch audio stream');
       }

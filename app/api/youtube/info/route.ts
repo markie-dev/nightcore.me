@@ -25,6 +25,7 @@ export async function GET(request: NextRequest) {
       title: info.videoDetails.title,
       thumbnail,
       formats: [{
+        url: bestFormat.url,
         mimeType: bestFormat.mimeType,
         bitrate: bestFormat.bitrate,
         contentLength: bestFormat.contentLength,
