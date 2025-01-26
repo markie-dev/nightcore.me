@@ -369,17 +369,19 @@ export default function UploadArea() {
             e.preventDefault();
             e.currentTarget.classList.remove('border-primary');
             const file = e.dataTransfer.files[0];
-            if (file && file.type.startsWith('audio/')) {
+            if (file && (file.type.startsWith('audio/') || file.name.match(/\.(mp3|wav|m4a|aac|ogg)$/i))) {
               handleFileUpload(file);
+            } else {
+              console.warn('Please upload an audio file');
             }
           }}
           onClick={() => {
             const input = document.createElement('input');
             input.type = 'file';
-            input.accept = 'audio/*';
+            input.accept = 'audio/*,.mp3,.wav,.m4a,.aac,.ogg';
             input.onchange = (e) => {
               const file = (e.target as HTMLInputElement).files?.[0];
-              if (file) {
+              if (file && (file.type.startsWith('audio/') || file.name.match(/\.(mp3|wav|m4a|aac|ogg)$/i))) {
                 handleFileUpload(file);
               }
             };

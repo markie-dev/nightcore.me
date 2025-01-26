@@ -9,7 +9,7 @@ import AnimatedHeading from "../components/AnimatedHeading";
 export default function About() {
   return (
     <PageLayout>
-      <AnimatedHeading className="text-5xl font-bold text-center">
+      <AnimatedHeading className="text-3xl sm:text-5xl font-bold text-center">
         made by markie-dev
       </AnimatedHeading>
       
