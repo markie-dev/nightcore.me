@@ -1,18 +1,10 @@
-import { NextRequest, NextResponse } from 'next/server';
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import { NextResponse } from 'next/server';
 import ytdl from '@distube/ytdl-core';
 
-type Params = {
-  params: {
-    videoId: string;
-  };
-};
-
-export async function GET(
-  request: NextRequest,
-  { params }: Params
-): Promise<NextResponse> {
+export async function GET(request: Request, context: any) {
   try {
-    const { videoId } = await Promise.resolve(params);
+    const { videoId } = await context.params;
     
     const stream = ytdl(videoId, {
       filter: 'audioonly',
@@ -21,15 +13,9 @@ export async function GET(
 
     const webStream = new ReadableStream({
       start(controller) {
-        stream.on('data', (chunk) => {
-          controller.enqueue(chunk);
-        });
-        stream.on('end', () => {
-          controller.close();
-        });
-        stream.on('error', (err) => {
-          controller.error(err);
-        });
+        stream.on('data', (chunk) => controller.enqueue(chunk));
+        stream.on('end', () => controller.close());
+        stream.on('error', (err) => controller.error(err));
       },
     });
 
