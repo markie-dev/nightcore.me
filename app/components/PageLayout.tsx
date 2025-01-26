@@ -6,7 +6,7 @@ interface PageLayoutProps {
 
 export default function PageLayout({ children }: PageLayoutProps) {
   return (
-    <div className="container h-full flex flex-col items-center justify-center py-8">
+    <div className="container mx-auto h-full flex flex-col items-center justify-center py-8 px-4 pt-36">
       {/* animated circles */}
       <div className="fixed inset-0 -z-10">
         <div className="circle-animation circle-blue" />
@@ -18,7 +18,7 @@ export default function PageLayout({ children }: PageLayoutProps) {
       <div className="fixed inset-0 -z-10 backdrop-blur-3xl" />
       
       {/* content */}
-      <div className="container relative z-10 px-4 sm:pt-48 pt-24 mx-auto max-w-screen-xl">
+      <div className="w-full max-w-4xl mx-auto">
         {children}
       </div>
     </div>
