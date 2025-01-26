@@ -39,7 +39,7 @@ export default function RootLayout({
           }}
         />
       </head>
-      <body className={`${inter.className} antialiased overflow-hidden`}>
+      <body className={`${inter.className} antialiased min-h-screen flex flex-col`}>
         <ThemeProvider
           attribute="class"
           defaultTheme="system"
@@ -48,7 +48,9 @@ export default function RootLayout({
         >
           <AnimatedBackground />
           <Navbar />
-          {children}
+          <main className="flex-1">
+            {children}
+          </main>
           <AnimatedFooter />
           <SpeedInsights />
         </ThemeProvider>
