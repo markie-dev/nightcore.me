@@ -8,23 +8,20 @@ const cookies = process.env.YOUTUBE_COOKIES
 
 const agent = ytdl.createAgent(cookies);
 
-export async function GET(
-  request: Request, 
-  { params }: { params: { videoId: string } }
-) {
-  const { videoId } = await params;
+export async function GET(req: Request, context: any) {
+  const videoId = context?.params?.videoId; 
   console.log('Streaming videoId:', videoId);
 
   try {
     const info = await ytdl.getInfo(videoId, { agent });
-    const format = ytdl.chooseFormat(info.formats, { 
+    const format = ytdl.chooseFormat(info.formats, {
       quality: 'highestaudio',
-      filter: 'audioonly' 
+      filter: 'audioonly',
     });
 
-    const stream = ytdl.downloadFromInfo(info, {
+    const stream = ytdl.downloadFromInfo(info, { 
       format,
-      agent
+      agent 
     });
 
     const webStream = new ReadableStream({
@@ -39,9 +36,8 @@ export async function GET(
       headers: {
         'Content-Type': 'audio/mp4',
         'Transfer-Encoding': 'chunked'
-      }
+      },
     });
-
   } catch (error) {
     console.error('Stream error:', error);
     return NextResponse.json(
