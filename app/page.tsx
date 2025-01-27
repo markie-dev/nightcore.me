@@ -41,7 +41,13 @@ export default function Home() {
   }
 
   return (
-    <PageLayout>
+    <PageLayout 
+      mobilePadding={
+        !isUploaded 
+          ? "py-32 md:py-48" // match About page when no song
+          : "pt-24 md:justify-start md:py-48" // fixed top padding when song loaded
+      }
+    >
       <AnimatePresence mode="sync">
         {!shouldHideHeadings && (
           <>
