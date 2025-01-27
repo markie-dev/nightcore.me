@@ -10,11 +10,17 @@ export async function GET(request: Request, context: any) {
     const baseUrl = process.env.VERCEL_URL 
       ? `https://${process.env.VERCEL_URL}` 
       : 'http://localhost:3000';
-    const proxyUrl = `${baseUrl}/api/yt-proxy`;
+      
+    const proxyUrl = process.env.VERCEL_URL 
+      ? `${baseUrl}/api/yt-proxy`
+      : 'http://localhost:3128';  // Use direct proxy URL for local development
     
+    console.log('Environment:', process.env.NODE_ENV);
+    console.log('Base URL:', baseUrl);
     console.log('Using proxy URL:', proxyUrl);
+    
     const agent = new ProxyAgent({
-      uri: `http://localhost:3128`,
+      uri: proxyUrl,
       auth: baseUrl.startsWith('https') ? 'https' : 'http'
     });
     
