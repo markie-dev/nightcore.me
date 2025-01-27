@@ -56,7 +56,7 @@ export async function GET(req: Request, context: any) {
     
     // Add pot parameter to URL
     const urlWithPot = new URL(format.url);
-    urlWithPot.searchParams.set('pot', 'Mlu2Yyixa5vVXrZbNWpzv8hcd8MAfaeXxUHoqxM6U43zNiYclE0NjfK1wSR9Cx2Da-i4jVBo9Y-D4eCLiso5-Vb1CJ5LQczrmzyRFhaAjO_QZDlGN_YOGfJuAH3M');
+    urlWithPot.searchParams.set('pot', process.env.YOUTUBE_POT || '');
     
     console.log('With headers:', {
       ...requestOptions.headers,

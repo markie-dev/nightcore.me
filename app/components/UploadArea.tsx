@@ -14,6 +14,7 @@ import {
 import { getFFmpegHelper } from "@/app/utils/ffmpeg.helper";
 import LinkBar from "@/app/components/LinkBar";
 import Image from 'next/image';
+import { useAudio } from '@/app/contexts/AudioContext';
 
 
 function bufferToWaveBlob(buffer: AudioBuffer) {
@@ -73,13 +74,24 @@ export default function UploadArea() {
   const playedColor = theme === "dark" ? "#d1d5db" : "#4b5563";
   const futureColor = theme === "dark" ? "#1f2937" : "#9ca3af";
 
-  const [isUploaded, setIsUploaded] = useState(false);
-  const [fileName, setFileName] = useState("");
-  const [isPlaying, setIsPlaying] = useState(false);
+  const { 
+    isUploaded, 
+    setIsUploaded,
+    fileName,
+    setFileName,
+    thumbnail,
+    setThumbnail,
+    playerRef,
+    duration,
+    setDuration,
+    playbackRate,
+    setPlaybackRate,
+    isPlaying,
+    setIsPlaying
+  } = useAudio();
 
   
   const [currentTime, setCurrentTime] = useState(0);
-  const [duration, setDuration] = useState(0);
 
   
   
@@ -88,10 +100,6 @@ export default function UploadArea() {
   const requestRef = useRef<number>(0);
 
   
-  const playerRef = useRef<Tone.Player | null>(null);
-
-  
-  const [playbackRate, setPlaybackRate] = useState(1.15);
   const playbackRates = [0.75, 1, 1.15, 1.25, 1.5];
 
   
@@ -100,7 +108,6 @@ export default function UploadArea() {
 
   
   const [isScrubbing, setIsScrubbing] = useState(false);
-  const [thumbnail, setThumbnail] = useState<string | null>(null);
 
   // play silent audio to unlock iOS audio
   const [audioElement] = useState(() => {

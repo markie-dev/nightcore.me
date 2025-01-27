@@ -10,7 +10,7 @@ export default function Navbar() {
   const { theme, setTheme } = useTheme();
 
   return (
-    <nav className="sticky top-0 z-50 w-full backdrop-blur-xl">
+    <nav className="fixed top-0 left-0 right-0 z-50 w-full backdrop-blur-xl">
       <div className="container px-4 py-2">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-6">

@@ -2,8 +2,8 @@
 
 import { useState } from 'react';
 import { Input } from '@/components/ui/input';
-import { motion } from 'framer-motion';
-import { ArrowRight } from '@phosphor-icons/react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { ArrowRight, X } from '@phosphor-icons/react';
 import * as Tone from 'tone';
 
 export default function LinkBar({ onAudioBuffer }: { 
@@ -116,7 +116,30 @@ export default function LinkBar({ onAudioBuffer }: {
           onKeyDown={(e) => {
             if (e.key === 'Enter') handleYouTubeLink();
           }}
+          disabled={isLoading}
         />
+        
+        <AnimatePresence mode="wait">
+          {url && (
+            <motion.button
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.8 }}
+              whileHover={{ scale: isLoading ? 1 : 1.05, backgroundColor: isLoading ? 'rgba(255, 255, 255, 0.05)' : 'rgba(255, 255, 255, 0.15)' }}
+              whileTap={{ scale: isLoading ? 1 : 0.95 }}
+              onClick={() => setUrl('')}
+              disabled={isLoading}
+              className={`p-1.5 rounded-full bg-white/5 backdrop-blur-sm text-muted-foreground transition-all duration-200 hover:bg-white/10
+                ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+              style={{
+                boxShadow: '0 0 0 1px rgba(255, 255, 255, 0.05)',
+              }}
+            >
+              <X weight="bold" className="w-3.5 h-3.5" />
+            </motion.button>
+          )}
+        </AnimatePresence>
+
         <motion.button
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
