@@ -11,9 +11,14 @@ import { usePathname } from 'next/navigation';
 export default function Home() {
   const { isUploaded, isFirstMount, setIsFirstMount } = useAudio();
   const [isMobile, setIsMobile] = useState(false);
+  const [isInitialized, setIsInitialized] = useState(false);
   const pathname = usePathname();
 
   useEffect(() => {
+    // Initial mobile check before any render
+    setIsMobile(window.innerWidth < 640);
+    setIsInitialized(true);
+
     // Reset first mount state when returning to home page
     if (pathname === '/') {
       setIsFirstMount(false);
@@ -24,12 +29,16 @@ export default function Home() {
     const checkMobile = () => {
       setIsMobile(window.innerWidth < 640);
     };
-    checkMobile();
     window.addEventListener('resize', checkMobile);
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
   const shouldHideHeadings = isUploaded && isMobile;
+
+  // Don't render anything until we've checked mobile state
+  if (!isInitialized) {
+    return null;
+  }
 
   return (
     <PageLayout>
