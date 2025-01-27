@@ -1,7 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { NextResponse } from 'next/server';
 import ytdl from '@distube/ytdl-core';
-import { Readable } from 'stream';
 
 const cookies = process.env.YOUTUBE_COOKIES 
   ? JSON.parse(process.env.YOUTUBE_COOKIES)
@@ -11,40 +10,21 @@ const requestOptions = {
   agent: ytdl.createAgent(cookies),
   headers: {
     'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
-    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+    'Accept': '*/*',
     'Accept-Language': 'en-US,en;q=0.9',
     'Accept-Encoding': 'gzip, deflate, br',
     'Connection': 'keep-alive',
     'Cookie': cookies.map((cookie: any) => `${cookie.name}=${cookie.value}`).join('; '),
     'Referer': 'https://www.youtube.com/',
-    'Origin': 'https://www.youtube.com'
+    'Origin': 'https://www.youtube.com',
+    'Sec-Fetch-Dest': 'audio',
+    'Sec-Fetch-Mode': 'cors',
+    'Sec-Fetch-Site': 'same-site'
   }
 };
 
 console.log('Number of cookies loaded:', cookies.length);
 console.log('Cookie names loaded:', cookies.map((c: { name: string }) => c.name));
-
-// Helper function to convert Node.js readable stream to Web Stream
-function nodeStreamToWebStream(nodeStream: Readable) {
-  return new ReadableStream({
-    start(controller) {
-      nodeStream.on('data', (chunk) => {
-        controller.enqueue(chunk);
-      });
-      nodeStream.on('end', () => {
-        controller.close();
-      });
-      nodeStream.on('error', (err) => {
-        console.error('Stream error in nodeStreamToWebStream:', err);
-        controller.error(err);
-      });
-    },
-    cancel() {
-      console.log('Stream cancelled, destroying nodeStream');
-      nodeStream.destroy();
-    }
-  });
-}
 
 export async function GET(req: Request, context: any) {
   const { videoId } = await context.params;
@@ -56,14 +36,6 @@ export async function GET(req: Request, context: any) {
       ...requestOptions,
       playerClients: ['ANDROID'],
       lang: 'en'
-    }).catch(error => {
-      console.error('Error in getInfo:', error);
-      console.error('Error details:', {
-        message: error.message,
-        stack: error.stack,
-        cause: error.cause,
-      });
-      throw error;
     });
 
     console.log('Video info received:', {
@@ -81,50 +53,30 @@ export async function GET(req: Request, context: any) {
     console.log('Format selected:', {
       itag: format.itag,
       mimeType: format.mimeType,
-      contentLength: format.contentLength
+      contentLength: format.contentLength,
+      url: format.url.substring(0, 100) + '...' // Log partial URL for debugging
     });
 
-    console.log('Creating stream...');
-    const stream = ytdl.downloadFromInfo(info, {
-      ...requestOptions,
-      format,
-      dlChunkSize: 1024 * 1024 * 10,
-      highWaterMark: 1024 * 1024 * 5,
-      playerClients: ['ANDROID']
+    console.log('Fetching audio stream...');
+    const response = await fetch(format.url, {
+      headers: {
+        ...requestOptions.headers,
+        'Range': 'bytes=0-',
+      }
     });
 
-    // Add error handler to the stream
-    stream.on('error', (error) => {
-      console.error('Stream error event:', error);
-      console.error('Stream error details:', {
-        message: error.message,
-        stack: error.stack,
-        cause: error.cause
-      });
-    });
+    if (!response.ok) {
+      throw new Error(`Failed to fetch audio: ${response.status} ${response.statusText}`);
+    }
 
-    let downloadedBytes = 0;
-    const totalBytes = parseInt(format.contentLength);
-    
-    stream.on('data', (chunk) => {
-      downloadedBytes += chunk.length;
-      const progress = (downloadedBytes / totalBytes * 100).toFixed(2);
-      console.log(`Download progress: ${progress}% (${downloadedBytes}/${totalBytes} bytes)`);
-    });
-
-    const webStream = nodeStreamToWebStream(stream);
-
+    console.log('Stream fetched successfully, returning response...');
     const headers = new Headers({
-      'Content-Type': 'audio/webm',
-      'Accept-Ranges': 'bytes',
+      'Content-Type': format.mimeType || 'audio/webm',
       'Content-Length': format.contentLength,
+      'Accept-Ranges': 'bytes'
     });
 
-    console.log('Returning response...');
-    return new NextResponse(webStream, {
-      headers,
-      status: 200,
-    });
+    return new NextResponse(response.body, { headers });
 
   } catch (error) {
     console.error('=== Detailed Stream Error ===');
@@ -145,10 +97,7 @@ export async function GET(req: Request, context: any) {
         error: 'Failed to stream audio', 
         details: error instanceof Error ? error.message : 'Unknown error',
         cookiesLoaded: cookies.length,
-        videoId,
-        errorType: error?.constructor?.name,
-        errorStack: (error as any)?.stack,
-        errorCause: (error as any)?.cause
+        videoId
       },
       { status: 500 }
     );
