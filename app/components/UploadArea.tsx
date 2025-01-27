@@ -102,6 +102,15 @@ export default function UploadArea() {
   const [isScrubbing, setIsScrubbing] = useState(false);
   const [thumbnail, setThumbnail] = useState<string | null>(null);
 
+  const [audioElement] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const audio = new Audio('/silence.mp3');
+      audio.loop = false;
+      return audio;
+    }
+    return null;
+  });
+
   const togglePlayPause = useCallback(() => {
     if (!playerRef.current) return;
     if (playerRef.current.state === "started") {
@@ -190,17 +199,23 @@ export default function UploadArea() {
     const player = playerRef.current;
     if (!player) return;
     
-    // Add this block to handle iOS audio context
-    if (Tone.context.state === "suspended") {
-        Tone.start().then(() => {
-            player.start(undefined, offsetRef.current);
-            startTimeRef.current = Tone.now();
-            setIsPlaying(true);
+    // Play silent audio to unlock iOS audio
+    if (audioElement) {
+        audioElement.play().then(() => {
+            if (Tone.context.state === "suspended") {
+                Tone.start().then(() => {
+                    player.start(undefined, offsetRef.current);
+                    startTimeRef.current = Tone.now();
+                    setIsPlaying(true);
+                });
+            } else {
+                player.start(undefined, offsetRef.current);
+                startTimeRef.current = Tone.now();
+                setIsPlaying(true);
+            }
+        }).catch(error => {
+            console.error("Error starting audio:", error);
         });
-    } else {
-        player.start(undefined, offsetRef.current);
-        startTimeRef.current = Tone.now();
-        setIsPlaying(true);
     }
   }
 
