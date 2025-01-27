@@ -34,7 +34,7 @@ export async function GET(req: Request, context: any) {
     console.log('Getting video info...');
     const info = await ytdl.getInfo(videoId, {
       ...requestOptions,
-      playerClients: ['ANDROID'],
+      playerClients: ['WEB_EMBEDDED'],
       lang: 'en'
     });
 
