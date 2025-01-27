@@ -34,7 +34,7 @@ export async function GET(req: Request, context: any) {
     console.log('Getting video info...');
     const info = await ytdl.getInfo(videoId, {
       ...requestOptions,
-      playerClients: ['WEB_EMBEDDED'],
+      playerClients: ['ANDROID'],
       lang: 'en'
     });
 
@@ -57,14 +57,16 @@ export async function GET(req: Request, context: any) {
       url: format.url.substring(0, 100) + '...' // Log partial URL for debugging
     });
 
-    console.log('Fetching audio stream...');
+    console.log('Attempting to fetch from URL:', format.url);
+    console.log('With headers:', {
+      ...requestOptions.headers,
+      'Range': 'bytes=0-'
+    });
+
     const response = await fetch(format.url, {
       headers: {
         ...requestOptions.headers,
         'Range': 'bytes=0-',
-        'Sec-Fetch-Dest': 'document',
-        'Sec-Fetch-Mode': 'navigate',
-        'Client-Name': 'ANDROID'
       }
     });
 
