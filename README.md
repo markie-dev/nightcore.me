@@ -2,7 +2,7 @@
 
 Web application that lets you nightcore/speed up any audio file or YouTube video. Audio processing happens directly in your browser - only YouTube metadata is fetched server-side.
 
-[![nightcore.me](./public/screenshot.jpeg)](https://nightcore.me)
+[![nightcore.me](./public/output1.gif)](https://nightcore.me)
 
 ## Features
 
