@@ -17,6 +17,12 @@ const requestOptions = {
     'Accept-Language': 'en-US,en;q=0.9',
     'Connection': 'keep-alive',
     'Cookie': cookies.map((cookie: any) => `${cookie.name}=${cookie.value}`).join('; ')
+  },
+  // Add these options to handle the header issue
+  requestOptions: {
+    headers: {
+      'X-Goog-Visitor-Id': '', // Provide empty string instead of undefined
+    }
   }
 };
 
@@ -27,7 +33,15 @@ export async function GET(req: Request, context: any) {
 
   try {
     console.log('Fetching video info...');
-    const info = await ytdl.getInfo(videoId, requestOptions);
+    const info = await ytdl.getInfo(videoId, {
+      ...requestOptions,
+      // Add these options here as well
+      requestOptions: {
+        headers: {
+          'X-Goog-Visitor-Id': '',
+        }
+      }
+    });
     console.log('Video info fetched successfully');
     
     console.log('Choosing format...');
