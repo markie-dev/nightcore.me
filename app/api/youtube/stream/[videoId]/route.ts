@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { NextResponse } from 'next/server';
 import ytdl from '@distube/ytdl-core';
+import { Readable } from 'stream';
 
 const cookies = process.env.YOUTUBE_COOKIES 
   ? JSON.parse(process.env.YOUTUBE_COOKIES)
@@ -23,46 +24,72 @@ const requestOptions = {
 console.log('Number of cookies loaded:', cookies.length);
 console.log('Cookie names loaded:', cookies.map((c: { name: string }) => c.name));
 
+// Helper function to convert Node.js readable stream to Web Stream
+function nodeStreamToWebStream(nodeStream: Readable) {
+  return new ReadableStream({
+    start(controller) {
+      nodeStream.on('data', (chunk) => {
+        controller.enqueue(chunk);
+      });
+      nodeStream.on('end', () => {
+        controller.close();
+      });
+      nodeStream.on('error', (err) => {
+        controller.error(err);
+      });
+    },
+    cancel() {
+      nodeStream.destroy();
+    }
+  });
+}
+
 export async function GET(req: Request, context: any) {
   const { videoId } = await context.params;
   console.log('Streaming videoId:', videoId);
-  console.log('Cookies loaded:', cookies.length);
 
   try {
+    console.log('Getting video info...');
     const info = await ytdl.getInfo(videoId, {
       ...requestOptions,
-      playerClients: ['ANDROID']  // try to avoid 403 errors
+      playerClients: ['ANDROID'],  // Just use ANDROID for faster response
+      lang: 'en'
     });
 
+    console.log('Choosing format...');
     const format = ytdl.chooseFormat(info.formats, {
       quality: 'highestaudio',
       filter: 'audioonly',
     });
 
-    const response = await fetch(format.url, {
-      headers: {
-        ...requestOptions.headers,
-        'Range': 'bytes=0-',
-      },
+    console.log('Creating stream...');
+    const stream = ytdl.downloadFromInfo(info, {
+      ...requestOptions,
+      format,
+      dlChunkSize: 1024 * 1024 * 10, // 10MB chunks
+      highWaterMark: 1024 * 1024 * 5, // 5MB buffer
+      playerClients: ['ANDROID']
     });
 
-    if (!response.ok) {
-      throw new Error(`Proxy fetch failed with status ${response.status}`);
-    }
+    // Add progress logging
+    let downloadedBytes = 0;
+    const totalBytes = parseInt(format.contentLength);
+    
+    stream.on('data', (chunk) => {
+      downloadedBytes += chunk.length;
+      const progress = (downloadedBytes / totalBytes * 100).toFixed(2);
+      console.log(`Download progress: ${progress}% (${downloadedBytes}/${totalBytes} bytes)`);
+    });
 
-    const contentType = response.headers.get('content-type') || 'audio/webm';
-    const contentLength = response.headers.get('content-length');
+    const webStream = nodeStreamToWebStream(stream);
 
     const headers = new Headers({
-      'Content-Type': contentType,
+      'Content-Type': 'audio/webm',
       'Accept-Ranges': 'bytes',
+      'Content-Length': format.contentLength,
     });
 
-    if (contentLength) {
-      headers.set('Content-Length', contentLength);
-    }
-
-    return new NextResponse(response.body, {
+    return new NextResponse(webStream, {
       headers,
       status: 200,
     });
@@ -73,14 +100,11 @@ export async function GET(req: Request, context: any) {
       console.error('Error name:', error.name);
       console.error('Error message:', error.message);
       console.error('Error stack:', error.stack);
-      // Add any additional properties that might exist on the error
-      console.error('Additional error details:', JSON.stringify(error, null, 2));
     }
     return NextResponse.json(
       { 
         error: 'Failed to stream audio', 
         details: (error as Error).message,
-        stack: (error as Error).stack,
         cookiesLoaded: cookies.length,
         videoId
       },
