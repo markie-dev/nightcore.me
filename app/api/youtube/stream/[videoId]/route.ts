@@ -2,31 +2,24 @@
 import { NextResponse } from 'next/server';
 import ytdl from '@distube/ytdl-core';
 
-// Parse cookies from environment variable
 const cookies = process.env.YOUTUBE_COOKIES 
   ? JSON.parse(process.env.YOUTUBE_COOKIES)
   : [];
 
-// Add more request headers to appear more like a browser
-const agent = ytdl.createAgent(cookies);
 const requestOptions = {
-  agent,
+  agent: ytdl.createAgent(cookies),
   headers: {
-    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
+    'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
+    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
     'Accept-Language': 'en-US,en;q=0.9',
+    'Accept-Encoding': 'gzip, deflate, br',
     'Connection': 'keep-alive',
-    'Cookie': cookies.map((cookie: any) => `${cookie.name}=${cookie.value}`).join('; ')
-  },
-  // Add these options to handle the header issue
-  requestOptions: {
-    headers: {
-      'X-Goog-Visitor-Id': '', // Provide empty string instead of undefined
-    }
+    'Cookie': cookies.map((cookie: any) => `${cookie.name}=${cookie.value}`).join('; '),
+    'Referer': 'https://www.youtube.com/',
+    'Origin': 'https://www.youtube.com'
   }
 };
 
-// Add these debug logs at the top
 console.log('Number of cookies loaded:', cookies.length);
 console.log('Cookie names loaded:', cookies.map((c: { name: string }) => c.name));
 
@@ -36,69 +29,44 @@ export async function GET(req: Request, context: any) {
   console.log('Cookies loaded:', cookies.length);
 
   try {
-    console.log('Fetching video info...');
     const info = await ytdl.getInfo(videoId, {
       ...requestOptions,
-      requestOptions: {
-        headers: {
-          'X-Goog-Visitor-Id': '',
-        }
-      }
+      playerClients: ['ANDROID']  // try to avoid 403 errors
     });
 
-    // Add these debug logs
-    console.log('Successfully fetched video info');
-    console.log('Video is age restricted:', info.videoDetails.age_restricted);
-    console.log('Video length:', info.videoDetails.lengthSeconds, 'seconds');
-    console.log('Available formats:', info.formats.length);
-    
-    console.log('Choosing format...');
     const format = ytdl.chooseFormat(info.formats, {
       quality: 'highestaudio',
       filter: 'audioonly',
     });
-    console.log('Selected format details:', {
-      itag: format.itag,
-      mimeType: format.mimeType,
-      bitrate: format.bitrate,
-      contentLength: format.contentLength,
-    });
 
-    console.log('Creating stream...');
-    const stream = ytdl.downloadFromInfo(info, { 
-      ...requestOptions,
-      format,
-      highWaterMark: 1 << 25 // Increase buffer size
-    });
-
-    const webStream = new ReadableStream({
-      start(controller) {
-        console.log('Starting stream controller...');
-        stream.on('data', (chunk) => {
-          try {
-            controller.enqueue(chunk);
-          } catch (err) {
-            console.error('Error enqueueing chunk:', err);
-          }
-        });
-        stream.on('end', () => {
-          console.log('Stream ended successfully');
-          controller.close();
-        });
-        stream.on('error', (err) => {
-          console.error('Stream error:', err);
-          controller.error(err);
-        });
-      },
-    });
-
-    console.log('Returning response...');
-    return new NextResponse(webStream, {
+    const response = await fetch(format.url, {
       headers: {
-        'Content-Type': 'audio/mp4',
-        'Transfer-Encoding': 'chunked'
+        ...requestOptions.headers,
+        'Range': 'bytes=0-',
       },
     });
+
+    if (!response.ok) {
+      throw new Error(`Proxy fetch failed with status ${response.status}`);
+    }
+
+    const contentType = response.headers.get('content-type') || 'audio/webm';
+    const contentLength = response.headers.get('content-length');
+
+    const headers = new Headers({
+      'Content-Type': contentType,
+      'Accept-Ranges': 'bytes',
+    });
+
+    if (contentLength) {
+      headers.set('Content-Length', contentLength);
+    }
+
+    return new NextResponse(response.body, {
+      headers,
+      status: 200,
+    });
+
   } catch (error) {
     console.error('Detailed stream error:', error);
     if (error instanceof Error) {
