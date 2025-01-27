@@ -10,16 +10,13 @@ const requestOptions = {
   agent: ytdl.createAgent(cookies),
   headers: {
     'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
-    'Accept': '*/*',
+    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
     'Accept-Language': 'en-US,en;q=0.9',
     'Accept-Encoding': 'gzip, deflate, br',
     'Connection': 'keep-alive',
     'Cookie': cookies.map((cookie: any) => `${cookie.name}=${cookie.value}`).join('; '),
     'Referer': 'https://www.youtube.com/',
-    'Origin': 'https://www.youtube.com',
-    'Sec-Fetch-Dest': 'audio',
-    'Sec-Fetch-Mode': 'cors',
-    'Sec-Fetch-Site': 'same-site'
+    'Origin': 'https://www.youtube.com'
   }
 };
 
