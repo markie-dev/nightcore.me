@@ -64,6 +64,7 @@ export async function GET(req: Request, context: any) {
         'Range': 'bytes=0-',
         'Sec-Fetch-Dest': 'document',
         'Sec-Fetch-Mode': 'navigate',
+        'Client-Name': 'ANDROID'
       }
     });
 
