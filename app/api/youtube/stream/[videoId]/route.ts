@@ -35,10 +35,12 @@ function nodeStreamToWebStream(nodeStream: Readable) {
         controller.close();
       });
       nodeStream.on('error', (err) => {
+        console.error('Stream error in nodeStreamToWebStream:', err);
         controller.error(err);
       });
     },
     cancel() {
+      console.log('Stream cancelled, destroying nodeStream');
       nodeStream.destroy();
     }
   });
@@ -52,8 +54,22 @@ export async function GET(req: Request, context: any) {
     console.log('Getting video info...');
     const info = await ytdl.getInfo(videoId, {
       ...requestOptions,
-      playerClients: ['ANDROID'],  // Just use ANDROID for faster response
+      playerClients: ['ANDROID'],
       lang: 'en'
+    }).catch(error => {
+      console.error('Error in getInfo:', error);
+      console.error('Error details:', {
+        message: error.message,
+        stack: error.stack,
+        cause: error.cause,
+      });
+      throw error;
+    });
+
+    console.log('Video info received:', {
+      title: info.videoDetails.title,
+      length: info.videoDetails.lengthSeconds,
+      formats: info.formats.length
     });
 
     console.log('Choosing format...');
@@ -62,16 +78,31 @@ export async function GET(req: Request, context: any) {
       filter: 'audioonly',
     });
 
+    console.log('Format selected:', {
+      itag: format.itag,
+      mimeType: format.mimeType,
+      contentLength: format.contentLength
+    });
+
     console.log('Creating stream...');
     const stream = ytdl.downloadFromInfo(info, {
       ...requestOptions,
       format,
-      dlChunkSize: 1024 * 1024 * 10, // 10MB chunks
-      highWaterMark: 1024 * 1024 * 5, // 5MB buffer
+      dlChunkSize: 1024 * 1024 * 10,
+      highWaterMark: 1024 * 1024 * 5,
       playerClients: ['ANDROID']
     });
 
-    // Add progress logging
+    // Add error handler to the stream
+    stream.on('error', (error) => {
+      console.error('Stream error event:', error);
+      console.error('Stream error details:', {
+        message: error.message,
+        stack: error.stack,
+        cause: error.cause
+      });
+    });
+
     let downloadedBytes = 0;
     const totalBytes = parseInt(format.contentLength);
     
@@ -89,24 +120,35 @@ export async function GET(req: Request, context: any) {
       'Content-Length': format.contentLength,
     });
 
+    console.log('Returning response...');
     return new NextResponse(webStream, {
       headers,
       status: 200,
     });
 
   } catch (error) {
-    console.error('Detailed stream error:', error);
+    console.error('=== Detailed Stream Error ===');
+    console.error('Error object:', error);
+    console.error('Error name:', (error as any)?.name);
+    console.error('Error message:', (error as any)?.message);
+    console.error('Error stack:', (error as any)?.stack);
+    console.error('Error cause:', (error as any)?.cause);
     if (error instanceof Error) {
-      console.error('Error name:', error.name);
-      console.error('Error message:', error.message);
-      console.error('Error stack:', error.stack);
+      console.error('Is Error instance: true');
+      console.error('Error properties:', Object.getOwnPropertyNames(error));
     }
+    console.error('Full error stringify:', JSON.stringify(error, null, 2));
+    console.error('=== End Error Details ===');
+
     return NextResponse.json(
       { 
         error: 'Failed to stream audio', 
-        details: (error as Error).message,
+        details: error instanceof Error ? error.message : 'Unknown error',
         cookiesLoaded: cookies.length,
-        videoId
+        videoId,
+        errorType: error?.constructor?.name,
+        errorStack: (error as any)?.stack,
+        errorCause: (error as any)?.cause
       },
       { status: 500 }
     );
