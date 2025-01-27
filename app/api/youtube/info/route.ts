@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
     console.log('Attempting to fetch video info with cookies...');
     const info = await ytdl.getInfo(videoId, {
       ...requestOptions,
-      playerClients: ['ANDROID'],  // Use ANDROID client like in stream route
+      playerClients: ['ANDROID'],  // use ANDROID client like in stream route
       lang: 'en'
     });
     
