@@ -2,11 +2,17 @@
 
 interface PageLayoutProps {
   children: React.ReactNode;
+  mobilePadding?: string;
+  desktopPadding?: string;
 }
 
-export default function PageLayout({ children }: PageLayoutProps) {
+export default function PageLayout({ 
+  children, 
+  mobilePadding = "py-24",  // default for home page
+  desktopPadding = "py-48"  // default for all pages
+}: PageLayoutProps) {
   return (
-    <div className="container mx-auto min-h-dvh flex flex-col items-center justify-start py-36 sm:py-48 px-4">
+    <div className={`container mx-auto min-h-dvh flex flex-col items-center justify-start ${mobilePadding} sm:${desktopPadding} px-4`}>
       {/* animated circles */}
       <div className="fixed inset-0 -z-10">
         <div className="circle-animation circle-blue" />

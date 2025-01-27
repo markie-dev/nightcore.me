@@ -8,7 +8,7 @@ import AnimatedHeading from "../components/AnimatedHeading";
 
 export default function About() {
   return (
-    <PageLayout>
+    <PageLayout mobilePadding="py-32" desktopPadding="py-48">
       <AnimatedHeading className="text-3xl sm:text-5xl font-bold text-center">
         made by markie-dev
       </AnimatedHeading>
