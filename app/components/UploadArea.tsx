@@ -189,14 +189,19 @@ export default function UploadArea() {
   function play() {
     const player = playerRef.current;
     if (!player) return;
+    
+    // Add this block to handle iOS audio context
     if (Tone.context.state === "suspended") {
-      Tone.context.resume();
+        Tone.start().then(() => {
+            player.start(undefined, offsetRef.current);
+            startTimeRef.current = Tone.now();
+            setIsPlaying(true);
+        });
+    } else {
+        player.start(undefined, offsetRef.current);
+        startTimeRef.current = Tone.now();
+        setIsPlaying(true);
     }
-    
-    
-    player.start(undefined, offsetRef.current);
-    startTimeRef.current = Tone.now();
-    setIsPlaying(true);
   }
 
   function pause() {
