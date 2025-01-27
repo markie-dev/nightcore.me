@@ -13,6 +13,10 @@ export default function LinkBar({ onAudioBuffer }: {
   const [isLoading, setIsLoading] = useState(false);
   const [url, setUrl] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [loadingState, setLoadingState] = useState<{
+    message: string;
+    isTransitioning?: boolean;
+  } | null>(null);
 
   async function handleYouTubeLink() {
     if (!url) return;
@@ -21,58 +25,62 @@ export default function LinkBar({ onAudioBuffer }: {
       setIsLoading(true);
       setError(null);
 
-      console.log('Starting YouTube link process...');
-
+      // Step 1: Extract Video ID
+      setLoadingState({ message: "Extracting video ID..." });
       const videoId = extractVideoId(url);
       if (!videoId) {
         throw new Error('Invalid YouTube URL');
       }
 
-      console.log('Video ID extracted:', videoId);
-
-      const infoResponse = await fetch(`/api/youtube/info?videoId=${videoId}`);
+      const infoPromise = fetch(`/api/youtube/info?videoId=${videoId}`);
+      
+      setLoadingState({ message: "Finding video...", isTransitioning: true });
+      
+      const infoResponse = await infoPromise;
       if (!infoResponse.ok) {
         throw new Error('Failed to fetch video info');
       }
 
       const videoInfo = await infoResponse.json();
-      console.log('Video info received:', videoInfo);
       
       if (!videoInfo.formats || videoInfo.formats.length === 0) {
         throw new Error('No audio formats available');
       }
 
-      const audioFormat = videoInfo.formats[0];
-      if (!audioFormat?.url) {
-        throw new Error('No audio stream found');
-      }
-
-      console.log('Starting audio fetch from:', audioFormat.url);
+      setLoadingState({ 
+        message: videoInfo.title || "Video found!", 
+        isTransitioning: true 
+      });
 
       await Tone.start();
-      
-      const response = await fetch(`/api/youtube/stream/${videoId}`);
-      if (!response.ok) {
-        throw new Error('Failed to fetch audio stream');
-      }
+      const audioPromise = fetch(`/api/youtube/stream/${videoId}`);
 
-      console.log('Audio stream fetched, converting to buffer...');
+      await Promise.all([
+        new Promise(resolve => setTimeout(resolve, 800)),
+        audioPromise.then(async (response) => {
+          if (!response.ok) {
+            throw new Error('Failed to fetch audio stream');
+          }
+          
+          setLoadingState({ 
+            message: "Starting audio fetch...", 
+            isTransitioning: true 
+          });
 
-      const arrayBuffer = await response.arrayBuffer();
-      console.log('ArrayBuffer created, decoding audio...');
-      
-      const audioBuffer = await Tone.context.decodeAudioData(arrayBuffer);
-      console.log('Audio decoded successfully:', audioBuffer);
-      
-      console.log('Calling onAudioBuffer...');
-      onAudioBuffer(audioBuffer, videoInfo.title, videoInfo.thumbnail);
+          const arrayBuffer = await response.arrayBuffer();
+          const audioBuffer = await Tone.context.decodeAudioData(arrayBuffer);
+          
+          onAudioBuffer(audioBuffer, videoInfo.title, videoInfo.thumbnail);
+        })
+      ]);
       
       setUrl('');
-      console.log('Process completed successfully');
+      setLoadingState(null);
       
     } catch (error) {
       console.error('Error processing YouTube link:', error);
       setError('Failed to process YouTube link. Please try a different video or check the URL.');
+      setLoadingState(null);
     } finally {
       setIsLoading(false);
     }
@@ -105,19 +113,40 @@ export default function LinkBar({ onAudioBuffer }: {
             ? 'bg-gray-100/20 dark:bg-gray-100/10' 
             : 'bg-gray-50/50 dark:bg-gray-100/5'}`}
       >
-        <Input 
-          type="text" 
-          value={url}
-          onChange={(e) => setUrl(e.target.value)}
-          placeholder="Or paste a YouTube link..."
-          className="border-none bg-transparent focus-visible:ring-0 text-base"
-          onFocus={() => setIsFocused(true)}
-          onBlur={() => setIsFocused(false)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') handleYouTubeLink();
-          }}
-          disabled={isLoading}
-        />
+        <AnimatePresence mode="wait">
+          {loadingState ? (
+            <motion.div
+              key="loading-state"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              className="flex-1 text-base px-3 py-1.5 text-muted-foreground overflow-hidden"
+            >
+              <motion.span
+                animate={{ opacity: loadingState.isTransitioning ? 0.5 : 1 }}
+                transition={{ duration: 0.3 }}
+                className="block truncate"
+              >
+                {loadingState.message}
+              </motion.span>
+            </motion.div>
+          ) : (
+            <Input 
+              key="input"
+              type="text" 
+              value={url}
+              onChange={(e) => setUrl(e.target.value)}
+              placeholder="Or paste a YouTube link..."
+              className="border-none bg-transparent focus-visible:ring-0 text-base"
+              onFocus={() => setIsFocused(true)}
+              onBlur={() => setIsFocused(false)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') handleYouTubeLink();
+              }}
+              disabled={isLoading}
+            />
+          )}
+        </AnimatePresence>
         
         <AnimatePresence mode="wait">
           {url && (

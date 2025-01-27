@@ -74,7 +74,7 @@ interface UploadAreaProps {
   skipAnimation?: boolean;
 }
 
-export default function UploadArea({ skipAnimation = false }: UploadAreaProps) {
+export default function UploadArea({ }: UploadAreaProps) {
   const { theme } = useTheme();
   const playedColor = theme === "dark" ? "#d1d5db" : "#4b5563";
   const futureColor = theme === "dark" ? "#1f2937" : "#9ca3af";
