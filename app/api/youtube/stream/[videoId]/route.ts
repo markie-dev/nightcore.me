@@ -26,6 +26,10 @@ const requestOptions = {
   }
 };
 
+// Add these debug logs at the top
+console.log('Number of cookies loaded:', cookies.length);
+console.log('Cookie names loaded:', cookies.map((c: { name: string }) => c.name));
+
 export async function GET(req: Request, context: any) {
   const { videoId } = await context.params;
   console.log('Streaming videoId:', videoId);
@@ -35,21 +39,30 @@ export async function GET(req: Request, context: any) {
     console.log('Fetching video info...');
     const info = await ytdl.getInfo(videoId, {
       ...requestOptions,
-      // Add these options here as well
       requestOptions: {
         headers: {
           'X-Goog-Visitor-Id': '',
         }
       }
     });
-    console.log('Video info fetched successfully');
+
+    // Add these debug logs
+    console.log('Successfully fetched video info');
+    console.log('Video is age restricted:', info.videoDetails.age_restricted);
+    console.log('Video length:', info.videoDetails.lengthSeconds, 'seconds');
+    console.log('Available formats:', info.formats.length);
     
     console.log('Choosing format...');
     const format = ytdl.chooseFormat(info.formats, {
       quality: 'highestaudio',
       filter: 'audioonly',
     });
-    console.log('Selected format:', format.itag);
+    console.log('Selected format details:', {
+      itag: format.itag,
+      mimeType: format.mimeType,
+      bitrate: format.bitrate,
+      contentLength: format.contentLength,
+    });
 
     console.log('Creating stream...');
     const stream = ytdl.downloadFromInfo(info, { 
@@ -89,13 +102,19 @@ export async function GET(req: Request, context: any) {
   } catch (error) {
     console.error('Detailed stream error:', error);
     if (error instanceof Error) {
+      console.error('Error name:', error.name);
+      console.error('Error message:', error.message);
       console.error('Error stack:', error.stack);
+      // Add any additional properties that might exist on the error
+      console.error('Additional error details:', JSON.stringify(error, null, 2));
     }
     return NextResponse.json(
       { 
         error: 'Failed to stream audio', 
         details: (error as Error).message,
-        stack: (error as Error).stack
+        stack: (error as Error).stack,
+        cookiesLoaded: cookies.length,
+        videoId
       },
       { status: 500 }
     );
