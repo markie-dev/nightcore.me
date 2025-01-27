@@ -25,8 +25,8 @@ export default function About() {
           transition={{ duration: 0.5, delay: 0.2 }}
           className="text-lg mb-8 text-foreground/60"
         >
-          all audio processing is done directly in your browser - no server required.
-          your files never leave your device, ensuring complete privacy.
+          all audio processing happens directly in your browser.
+          only the metadata for youtube links is fetched server-side.
         </motion.p>
         
         <motion.div 
