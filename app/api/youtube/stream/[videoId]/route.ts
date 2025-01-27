@@ -1,14 +1,28 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { NextResponse } from 'next/server';
 import ytdl from '@distube/ytdl-core';
+import { ProxyAgent } from 'undici';
 
 export async function GET(request: Request, context: any) {
   try {
     const { videoId } = await context.params;
     
-    const stream = ytdl(videoId, {
+    const baseUrl = process.env.VERCEL_URL 
+      ? `https://${process.env.VERCEL_URL}` 
+      : 'http://localhost:3000';
+    const proxyUrl = `${baseUrl}/api/yt-proxy`;
+    
+    console.log('Using proxy URL:', proxyUrl);
+    const agent = new ProxyAgent({
+      uri: `http://localhost:3128`,
+      auth: baseUrl.startsWith('https') ? 'https' : 'http'
+    });
+    
+    console.log('Streaming videoId:', videoId);
+    const stream = ytdl(`https://www.youtube.com/watch?v=${videoId}`, {
       filter: 'audioonly',
-      quality: 'highestaudio'
+      quality: 'highestaudio',
+      requestOptions: { dispatcher: agent }
     });
 
     const webStream = new ReadableStream({

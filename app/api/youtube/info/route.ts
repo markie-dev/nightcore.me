@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import ytdl from '@distube/ytdl-core';
+import { ProxyAgent } from 'undici';
 
 export async function GET(request: NextRequest) {
   const videoId = request.nextUrl.searchParams.get('videoId');
@@ -9,7 +10,21 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const info = await ytdl.getInfo(videoId);
+    const baseUrl = process.env.VERCEL_URL 
+      ? `https://${process.env.VERCEL_URL}` 
+      : 'http://localhost:3000';
+    const proxyUrl = `${baseUrl}/api/yt-proxy`;
+    
+    console.log('Using proxy URL:', proxyUrl);
+    const agent = new ProxyAgent({
+      uri: `http://localhost:3128`,
+      auth: baseUrl.startsWith('https') ? 'https' : 'http'
+    });
+    
+    console.log('Fetching info for videoId:', videoId);
+    const info = await ytdl.getInfo(`https://www.youtube.com/watch?v=${videoId}`, { 
+      requestOptions: { dispatcher: agent }
+    });
     
     const audioFormats = ytdl.filterFormats(info.formats, 'audioonly');
     if (audioFormats.length === 0) {
