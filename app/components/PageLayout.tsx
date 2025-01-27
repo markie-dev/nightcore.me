@@ -8,8 +8,7 @@ interface PageLayoutProps {
 
 export default function PageLayout({ 
   children, 
-  mobilePadding = "justify-start pt-[10vh] md:justify-start md:py-48",
-  desktopPadding = "py-48"
+  mobilePadding = "justify-start pt-[10vh] md:justify-start md:py-48"
 }: PageLayoutProps) {
   
   return (
