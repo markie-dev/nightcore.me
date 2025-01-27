@@ -5,6 +5,7 @@ const cookies = process.env.YOUTUBE_COOKIES
   ? JSON.parse(process.env.YOUTUBE_COOKIES)
   : [];
 
+// log cookies
 console.log('Number of cookies loaded:', cookies.length);
 console.log('Cookie names loaded:', cookies.map((c: { name: string }) => c.name));
 
