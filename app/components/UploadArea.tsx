@@ -15,6 +15,7 @@ import { getFFmpegHelper } from "@/app/utils/ffmpeg.helper";
 import LinkBar from "@/app/components/LinkBar";
 import Image from 'next/image';
 import { useAudio } from '@/app/contexts/AudioContext';
+import { Skeleton } from "@/components/ui/skeleton";
 
 
 function bufferToWaveBlob(buffer: AudioBuffer) {
@@ -69,7 +70,11 @@ function bufferToWaveBlob(buffer: AudioBuffer) {
   return new Blob([bufferArray], { type: "audio/wav" });
 }
 
-export default function UploadArea() {
+interface UploadAreaProps {
+  skipAnimation?: boolean;
+}
+
+export default function UploadArea({ skipAnimation = false }: UploadAreaProps) {
   const { theme } = useTheme();
   const playedColor = theme === "dark" ? "#d1d5db" : "#4b5563";
   const futureColor = theme === "dark" ? "#1f2937" : "#9ca3af";
@@ -581,14 +586,22 @@ export default function UploadArea() {
             animate={{ opacity: 1, scale: 1 }}
             className="relative w-full aspect-square max-w-[240px] mx-auto mb-4 rounded-lg overflow-hidden"
           >
-            <Image
-              src={thumbnail}
-              alt="Video thumbnail"
-              fill
-              className="object-cover"
-              sizes="(max-width: 240px) 100vw, 240px"
-              priority
-            />
+            <div className="relative w-full h-full">
+              <Skeleton className="absolute inset-0 z-10" />
+              <Image
+                src={thumbnail}
+                alt="Video thumbnail"
+                fill
+                className="object-cover z-20"
+                sizes="(max-width: 240px) 100vw, 240px"
+                priority
+                onLoad={(e) => {
+                  // Hide skeleton when image loads
+                  const target = e.target as HTMLImageElement;
+                  target.style.zIndex = "30";
+                }}
+              />
+            </div>
           </motion.div>
         )}
 

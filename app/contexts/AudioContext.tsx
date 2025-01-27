@@ -17,6 +17,8 @@ interface AudioContextType {
   setPlaybackRate: (value: number) => void;
   isPlaying: boolean;
   setIsPlaying: (value: boolean) => void;
+  isFirstMount: boolean;
+  setIsFirstMount: (value: boolean) => void;
 }
 
 const AudioContext = createContext<AudioContextType | undefined>(undefined);
@@ -28,6 +30,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
   const [duration, setDuration] = useState(0);
   const [playbackRate, setPlaybackRate] = useState(1.15);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [isFirstMount, setIsFirstMount] = useState(true);
   const playerRef = useRef<Tone.Player | null>(null);
 
   return (
@@ -45,6 +48,8 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
       setPlaybackRate,
       isPlaying,
       setIsPlaying,
+      isFirstMount,
+      setIsFirstMount,
     }}>
       {children}
     </AudioContext.Provider>
