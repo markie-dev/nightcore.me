@@ -102,6 +102,7 @@ export default function UploadArea() {
   const [isScrubbing, setIsScrubbing] = useState(false);
   const [thumbnail, setThumbnail] = useState<string | null>(null);
 
+  // play silent audio to unlock iOS audio
   const [audioElement] = useState(() => {
     if (typeof window !== 'undefined') {
       const audio = new Audio('/silence.mp3');

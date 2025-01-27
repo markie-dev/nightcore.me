@@ -7,7 +7,18 @@ const cookies = process.env.YOUTUBE_COOKIES
   ? JSON.parse(process.env.YOUTUBE_COOKIES)
   : [];
 
+// Add more request headers to appear more like a browser
 const agent = ytdl.createAgent(cookies);
+const requestOptions = {
+  agent,
+  headers: {
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
+    'Accept-Language': 'en-US,en;q=0.9',
+    'Connection': 'keep-alive',
+    'Cookie': cookies.map((cookie: any) => `${cookie.name}=${cookie.value}`).join('; ')
+  }
+};
 
 export async function GET(req: Request, context: any) {
   const { videoId } = await context.params;
@@ -16,7 +27,7 @@ export async function GET(req: Request, context: any) {
 
   try {
     console.log('Fetching video info...');
-    const info = await ytdl.getInfo(videoId, { agent });
+    const info = await ytdl.getInfo(videoId, requestOptions);
     console.log('Video info fetched successfully');
     
     console.log('Choosing format...');
@@ -28,8 +39,8 @@ export async function GET(req: Request, context: any) {
 
     console.log('Creating stream...');
     const stream = ytdl.downloadFromInfo(info, { 
+      ...requestOptions,
       format,
-      agent,
       highWaterMark: 1 << 25 // Increase buffer size
     });
 
