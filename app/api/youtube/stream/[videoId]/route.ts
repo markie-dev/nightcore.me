@@ -34,7 +34,7 @@ export async function GET(req: Request, context: any) {
     console.log('Getting video info...');
     const info = await ytdl.getInfo(videoId, {
       ...requestOptions,
-      playerClients: ['IOS'],
+      playerClients: ['ANDROID'],
       lang: 'en'
     });
 
@@ -62,6 +62,8 @@ export async function GET(req: Request, context: any) {
       headers: {
         ...requestOptions.headers,
         'Range': 'bytes=0-',
+        'Sec-Fetch-Dest': 'document',
+        'Sec-Fetch-Mode': 'navigate',
       }
     });
 
