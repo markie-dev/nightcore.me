@@ -1,34 +1,30 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { NextResponse } from 'next/server';
 import ytdl from '@distube/ytdl-core';
-import { ProxyAgent } from 'undici';
 
-export async function GET(request: Request, context: any) {
+const cookies = process.env.YOUTUBE_COOKIES 
+  ? JSON.parse(process.env.YOUTUBE_COOKIES)
+  : [];
+
+const agent = ytdl.createAgent(cookies);
+
+export async function GET(
+  request: Request, 
+  { params }: { params: { videoId: string } }
+) {
+  const { videoId } = await params;
+  console.log('Streaming videoId:', videoId);
+
   try {
-    const { videoId } = await context.params;
-    
-    const baseUrl = process.env.VERCEL_URL 
-      ? `https://${process.env.VERCEL_URL}` 
-      : 'http://localhost:3000';
-      
-    const proxyUrl = process.env.VERCEL_URL 
-      ? `${baseUrl}/api/yt-proxy`
-      : 'http://localhost:3128';  // Use direct proxy URL for local development
-    
-    console.log('Environment:', process.env.NODE_ENV);
-    console.log('Base URL:', baseUrl);
-    console.log('Using proxy URL:', proxyUrl);
-    
-    const agent = new ProxyAgent({
-      uri: proxyUrl,
-      auth: baseUrl.startsWith('https') ? 'https' : 'http'
-    });
-    
-    console.log('Streaming videoId:', videoId);
-    const stream = ytdl(`https://www.youtube.com/watch?v=${videoId}`, {
-      filter: 'audioonly',
+    const info = await ytdl.getInfo(videoId, { agent });
+    const format = ytdl.chooseFormat(info.formats, { 
       quality: 'highestaudio',
-      requestOptions: { dispatcher: agent }
+      filter: 'audioonly' 
+    });
+
+    const stream = ytdl.downloadFromInfo(info, {
+      format,
+      agent
     });
 
     const webStream = new ReadableStream({
