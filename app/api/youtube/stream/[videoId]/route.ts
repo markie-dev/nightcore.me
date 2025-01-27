@@ -53,12 +53,17 @@ export async function GET(req: Request, context: any) {
     });
 
     console.log('Attempting to fetch from URL:', format.url);
+    
+    // Add pot parameter to URL
+    const urlWithPot = new URL(format.url);
+    urlWithPot.searchParams.set('pot', 'Mlu2Yyixa5vVXrZbNWpzv8hcd8MAfaeXxUHoqxM6U43zNiYclE0NjfK1wSR9Cx2Da-i4jVBo9Y-D4eCLiso5-Vb1CJ5LQczrmzyRFhaAjO_QZDlGN_YOGfJuAH3M');
+    
     console.log('With headers:', {
       ...requestOptions.headers,
       'Range': 'bytes=0-'
     });
 
-    const response = await fetch(format.url, {
+    const response = await fetch(urlWithPot.toString(), {
       headers: {
         ...requestOptions.headers,
         'Range': 'bytes=0-',
