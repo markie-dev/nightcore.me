@@ -57,9 +57,9 @@ YOUTUBE_POT=<your-potoken>
 > You can get your YoutTube cookies by following the guide [here](https://github.com/distubejs/ytdl-core/).
 
 > [!WARNING]
-> You can get your POToken by following the guide [here](https://github.com/yt-dlp/yt-dlp/wiki/PO-Token-Guide/).
+> You can get your PO Token by following the guide [here](https://github.com/yt-dlp/yt-dlp/wiki/PO-Token-Guide/).
 
-4. **Run the development server**
+5. **Run the development server**
 ```bash
 bun run dev
 ```
