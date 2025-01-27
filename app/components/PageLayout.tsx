@@ -8,14 +8,12 @@ interface PageLayoutProps {
 
 export default function PageLayout({ 
   children, 
-  mobilePadding = "py-28 md:py-48",
+  mobilePadding = "justify-start pt-[10vh] md:justify-start md:py-48",
   desktopPadding = "py-48"
 }: PageLayoutProps) {
-  const mobileClass = mobilePadding;
-  const desktopClass = `md:${desktopPadding.replace('md:', '')}`;
   
   return (
-    <div className={`container mx-auto min-h-dvh flex flex-col items-center justify-start ${mobileClass} ${desktopClass} px-4`}>
+    <div className={`container mx-auto min-h-dvh flex flex-col items-center ${mobilePadding} px-4`}>
       {/* animated circles */}
       <div className="fixed inset-0 -z-10">
         <div className="circle-animation circle-blue" />
