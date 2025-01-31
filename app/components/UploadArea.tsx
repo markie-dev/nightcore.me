@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import * as Tone from "tone";
-import { Play, Pause, SkipBack, Download, Upload, Speedometer, X, Check, Waveform, Headphones } from "@phosphor-icons/react";
+import { Play, Pause, SkipBack, Download, Upload, Speedometer, X, Check, Waveform, Headphones, SpeakerNone, SpeakerHigh, SpeakerSimpleSlash } from "@phosphor-icons/react";
 import { useTheme } from "next-themes";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -124,6 +124,16 @@ export default function UploadArea({ }: UploadAreaProps) {
     return null;
   });
 
+  const [volume, setVolume] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const savedVolume = localStorage.getItem('audioVolume');
+      return savedVolume ? parseFloat(savedVolume) : 1;
+    }
+    return 1;
+  });
+
+  const [isVolumeHovered, setIsVolumeHovered] = useState(false);
+
   const togglePlayPause = useCallback(() => {
     if (!playerRef.current) return;
     if (playerRef.current.state === "started") {
@@ -202,6 +212,7 @@ export default function UploadArea({ }: UploadAreaProps) {
 
     newPlayer.autostart = false;
     newPlayer.playbackRate = playbackRate;
+    newPlayer.volume.value = 20 * Math.log10(volume);
     playerRef.current = newPlayer;
   }
 
@@ -212,7 +223,7 @@ export default function UploadArea({ }: UploadAreaProps) {
     const player = playerRef.current;
     if (!player) return;
     
-    // Play silent audio to unlock iOS audio
+    // play silent audio to unlock iOS audio
     if (audioElement) {
         audioElement.play().then(() => {
             if (Tone.context.state === "suspended") {
@@ -441,6 +452,7 @@ export default function UploadArea({ }: UploadAreaProps) {
       
       newPlayer.autostart = false;
       newPlayer.playbackRate = playbackRate;
+      newPlayer.volume.value = 20 * Math.log10(volume);
       
       
       newPlayer.onstop = () => {
@@ -468,6 +480,18 @@ export default function UploadArea({ }: UploadAreaProps) {
       setThumbnail(null);
     }
   };
+
+  /* ======================
+     VOLUME CONTROL
+  ====================== */
+  function handleVolumeChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const newVolume = parseFloat(e.target.value);
+    setVolume(newVolume);
+    localStorage.setItem('audioVolume', newVolume.toString());
+    if (playerRef.current) {
+      playerRef.current.volume.value = 20 * Math.log10(newVolume);
+    }
+  }
 
   /* ======================
      RENDER
@@ -596,7 +620,6 @@ export default function UploadArea({ }: UploadAreaProps) {
                 sizes="(max-width: 240px) 100vw, 240px"
                 priority
                 onLoad={(e) => {
-                  // Hide skeleton when image loads
                   const target = e.target as HTMLImageElement;
                   target.style.zIndex = "30";
                 }}
@@ -781,6 +804,103 @@ export default function UploadArea({ }: UploadAreaProps) {
               </DropdownMenu>
             </div>
           </div>
+        </motion.div>
+
+        <motion.div 
+          className="flex items-center gap-3 mt-4 px-2"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.3 }}
+          onMouseEnter={() => setIsVolumeHovered(true)}
+          onMouseLeave={() => setIsVolumeHovered(false)}
+        >
+          <motion.div
+            whileTap={{ scale: 0.9 }}
+            animate={{ 
+              scale: isVolumeHovered ? 1.1 : 1,
+              x: isVolumeHovered ? -8 : 0
+            }}
+            className="cursor-pointer"
+            onClick={() => {
+              const newVolume = volume === 0 ? 1 : 0;
+              setVolume(newVolume);
+              localStorage.setItem('audioVolume', newVolume.toString());
+              if (playerRef.current) {
+                playerRef.current.volume.value = 20 * Math.log10(newVolume);
+              }
+            }}
+          >
+            <AnimatePresence mode="wait" initial={false}>
+              {volume === 0 ? (
+                <motion.div
+                  key="muted"
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.8 }}
+                  transition={{ duration: 0.15, ease: "easeOut" }}
+                >
+                  <SpeakerSimpleSlash className={`w-5 h-5 transition-opacity duration-200 ${
+                    isVolumeHovered ? 'text-foreground' : 'text-muted-foreground'
+                  }`} />
+                </motion.div>
+              ) : (
+                <motion.div
+                  key="unmuted"
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.8 }}
+                  transition={{ duration: 0.15, ease: "easeOut" }}
+                >
+                  <SpeakerNone className={`w-5 h-5 transition-opacity duration-200 ${
+                    isVolumeHovered ? 'text-foreground' : 'text-muted-foreground'
+                  }`} />
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </motion.div>
+          <div className="relative w-full">
+            <motion.div
+              animate={{ scale: isVolumeHovered ? 1.02 : 1 }}
+              className="w-full"
+            >
+              <input
+                type="range"
+                min={0}
+                max={1}
+                step="0.01"
+                value={volume}
+                onChange={handleVolumeChange}
+                className="w-full h-1.5 rounded-lg appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all duration-200"
+                style={{
+                  background: `linear-gradient(to right,
+                    ${playedColor}50 0%,
+                    ${playedColor}50 ${volume * 100}%,
+                    ${futureColor}30 ${volume * 100}%,
+                    ${futureColor}30 100%)`,
+                }}
+              />
+            </motion.div>
+          </div>
+          <motion.div
+            whileTap={{ scale: 0.9 }}
+            animate={{ 
+              scale: isVolumeHovered ? 1.1 : 1,
+              x: isVolumeHovered ? 8 : 0
+            }}
+            className="cursor-pointer"
+            onClick={() => {
+              const newVolume = 1;
+              setVolume(newVolume);
+              localStorage.setItem('audioVolume', newVolume.toString());
+              if (playerRef.current) {
+                playerRef.current.volume.value = 20 * Math.log10(newVolume);
+              }
+            }}
+          >
+            <SpeakerHigh className={`w-5 h-5 transition-opacity duration-200 ${
+              isVolumeHovered ? 'text-foreground' : 'text-muted-foreground'
+            }`} />
+          </motion.div>
         </motion.div>
       </motion.div>
 
