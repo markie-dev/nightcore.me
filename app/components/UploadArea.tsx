@@ -92,7 +92,9 @@ export default function UploadArea({ }: UploadAreaProps) {
     playbackRate,
     setPlaybackRate,
     isPlaying,
-    setIsPlaying
+    setIsPlaying,
+    isProcessing,
+    setIsProcessing
   } = useAudio();
 
   
@@ -172,6 +174,7 @@ export default function UploadArea({ }: UploadAreaProps) {
   function handleFileUpload(file: File) {
     if (!file) return;
 
+    setIsProcessing(true);
     const url = URL.createObjectURL(file);
 
     
@@ -188,9 +191,11 @@ export default function UploadArea({ }: UploadAreaProps) {
       const rawBuffer = newPlayer.buffer?.get();
       if (!rawBuffer) {
         console.error("Failed to get audio buffer");
+        setIsProcessing(false);
         return;
       }
       setDuration(rawBuffer.duration);
+      setIsProcessing(false);
     }).toDestination();
 
     
@@ -432,6 +437,8 @@ export default function UploadArea({ }: UploadAreaProps) {
 
   const handleYouTubeAudio = async (buffer: AudioBuffer, title?: string, thumbnail?: string) => {
     try {
+      setIsProcessing(true);
+      
       if (playerRef.current) {
         playerRef.current.dispose();
         playerRef.current = null;
@@ -446,6 +453,7 @@ export default function UploadArea({ }: UploadAreaProps) {
         url: buffer,
         onload: () => {
           console.log('Player loaded');
+          setIsProcessing(false);
         }
       }).toDestination();
 
@@ -474,6 +482,7 @@ export default function UploadArea({ }: UploadAreaProps) {
 
     } catch (error) {
       console.error('Error setting up player:', error);
+      setIsProcessing(false);
       
       setIsUploaded(false);
       setFileName("");
@@ -493,10 +502,28 @@ export default function UploadArea({ }: UploadAreaProps) {
     }
   }
 
+  function toggleMute() {
+    const newVolume = volume === 0 ? 1 : 0;
+    setVolume(newVolume);
+    localStorage.setItem('audioVolume', newVolume.toString());
+    if (playerRef.current) {
+      playerRef.current.volume.value = 20 * Math.log10(newVolume);
+    }
+  }
+
+  function toggleFullVolume() {
+    const newVolume = volume === 1 ? 0 : 1;
+    setVolume(newVolume);
+    localStorage.setItem('audioVolume', newVolume.toString());
+    if (playerRef.current) {
+      playerRef.current.volume.value = 20 * Math.log10(newVolume);
+    }
+  }
+
   /* ======================
      RENDER
   ====================== */
-  if (!isUploaded) {
+  if (!isUploaded || isProcessing) {
     return (
       <motion.div 
         initial={{ opacity: 0, scale: 0.98 }}
@@ -504,54 +531,80 @@ export default function UploadArea({ }: UploadAreaProps) {
         transition={{ duration: 0.3, ease: "easeOut" }}
         className="mt-12 max-w-xl mx-auto"
       >
-        <motion.div 
-          className="border-2 border-dashed border-gray-100 dark:border-gray-700 rounded-lg px-12 py-8 text-center hover:border-gray-200 dark:hover:border-gray-600 transition-all duration-200 group cursor-pointer bg-gray-50/50 dark:bg-gray-100/10 hover:bg-gray-100/50 dark:hover:bg-gray-100/20"
-          whileHover={{ scale: 1.02 }}
-          whileTap={{ scale: 0.98 }}
-          onDragOver={(e) => {
-            e.preventDefault();
-            e.currentTarget.classList.add("border-primary");
-          }}
-          onDragLeave={(e) => {
-            e.preventDefault();
-            e.currentTarget.classList.remove("border-primary");
-          }}
-          onDrop={(e) => {
-            e.preventDefault();
-            e.currentTarget.classList.remove("border-primary");
-            const file = e.dataTransfer.files[0];
-            if (file && (file.type.startsWith("audio/") || file.name.match(/\.(mp3|wav|m4a|aac|ogg)$/i))) {
-              handleFileUpload(file);
-            } else {
-              console.warn("Please upload an audio file");
-            }
-          }}
-          onClick={() => {
-            const input = document.createElement("input");
-            input.type = "file";
-            input.accept = "audio/*,.mp3,.wav,.m4a,.aac,.ogg";
-            input.onchange = (e) => {
-              const f = (e.target as HTMLInputElement).files?.[0];
-              if (f && (f.type.startsWith("audio/") || f.name.match(/\.(mp3|wav|m4a|aac|ogg)$/i))) {
-                handleFileUpload(f);
-              }
-            };
-            input.click();
-          }}
-        >
+        {isProcessing ? (
           <motion.div 
-            className="flex flex-col items-center gap-3"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.1, duration: 0.2 }}
+            className="border-2 border-dashed border-primary/50 rounded-lg px-12 py-8 text-center bg-primary/5"
+            initial={{ scale: 0.98 }}
+            animate={{ scale: 1 }}
+            transition={{ duration: 0.3, ease: "easeOut" }}
           >
-            <Upload className="w-8 h-8 opacity-60" />
-            <div>
-              <p className="text-lg font-medium">Drop your audio file here</p>
-              <p className="text-sm text-muted-foreground mt-1">or click to select a file</p>
-            </div>
+            <motion.div 
+              className="flex flex-col items-center gap-4"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.1, duration: 0.2 }}
+            >
+              <motion.div
+                animate={{ rotate: 360 }}
+                transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+                className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full"
+              />
+              <div>
+                <p className="text-lg font-medium">Processing audio file...</p>
+                <p className="text-sm text-muted-foreground mt-1">This might take a moment</p>
+              </div>
+            </motion.div>
           </motion.div>
-        </motion.div>
+        ) : (
+          <motion.div 
+            className="border-2 border-dashed border-gray-100 dark:border-gray-700 rounded-lg px-12 py-8 text-center hover:border-gray-200 dark:hover:border-gray-600 transition-all duration-200 group cursor-pointer bg-gray-50/50 dark:bg-gray-100/10 hover:bg-gray-100/50 dark:hover:bg-gray-100/20"
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            onDragOver={(e) => {
+              e.preventDefault();
+              e.currentTarget.classList.add("border-primary");
+            }}
+            onDragLeave={(e) => {
+              e.preventDefault();
+              e.currentTarget.classList.remove("border-primary");
+            }}
+            onDrop={(e) => {
+              e.preventDefault();
+              e.currentTarget.classList.remove("border-primary");
+              const file = e.dataTransfer.files[0];
+              if (file && (file.type.startsWith("audio/") || file.name.match(/\.(mp3|wav|m4a|aac|ogg)$/i))) {
+                handleFileUpload(file);
+              } else {
+                console.warn("Please upload an audio file");
+              }
+            }}
+            onClick={() => {
+              const input = document.createElement("input");
+              input.type = "file";
+              input.accept = "audio/*,.mp3,.wav,.m4a,.aac,.ogg";
+              input.onchange = (e) => {
+                const f = (e.target as HTMLInputElement).files?.[0];
+                if (f && (f.type.startsWith("audio/") || f.name.match(/\.(mp3|wav|m4a|aac|ogg)$/i))) {
+                  handleFileUpload(f);
+                }
+              };
+              input.click();
+            }}
+          >
+            <motion.div 
+              className="flex flex-col items-center gap-3"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.1, duration: 0.2 }}
+            >
+              <Upload className="w-8 h-8 opacity-60" />
+              <div>
+                <p className="text-lg font-medium">Drop your audio file here</p>
+                <p className="text-sm text-muted-foreground mt-1">or click to select a file</p>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
         <div className="max-w-xl mx-auto px-4 my-8">
         <motion.div 
           initial={{ opacity: 0, scaleX: 0 }}
@@ -560,7 +613,7 @@ export default function UploadArea({ }: UploadAreaProps) {
           className="h-px bg-gradient-to-r from-transparent via-foreground/20 to-transparent"
         />
       </div>
-        <LinkBar onAudioBuffer={handleYouTubeAudio} />
+        {!isProcessing && <LinkBar onAudioBuffer={handleYouTubeAudio} />}
       </motion.div>
     );
   }
@@ -584,6 +637,7 @@ export default function UploadArea({ }: UploadAreaProps) {
             setIsPlaying(false);
             setCurrentTime(0);
             setDuration(0);
+            setIsProcessing(false);
             offsetRef.current = 0;
             if (playerRef.current) {
               playerRef.current.dispose();
@@ -820,15 +874,13 @@ export default function UploadArea({ }: UploadAreaProps) {
               scale: isVolumeHovered ? 1.1 : 1,
               x: isVolumeHovered ? -8 : 0
             }}
-            className="cursor-pointer"
-            onClick={() => {
-              const newVolume = volume === 0 ? 1 : 0;
-              setVolume(newVolume);
-              localStorage.setItem('audioVolume', newVolume.toString());
-              if (playerRef.current) {
-                playerRef.current.volume.value = 20 * Math.log10(newVolume);
-              }
+            className="cursor-pointer select-none"
+            onClick={toggleMute}
+            onDoubleClick={(e) => {
+              e.preventDefault();
+              toggleMute();
             }}
+            style={{ userSelect: 'none' }}
           >
             <AnimatePresence mode="wait" initial={false}>
               {volume === 0 ? (
@@ -887,15 +939,13 @@ export default function UploadArea({ }: UploadAreaProps) {
               scale: isVolumeHovered ? 1.1 : 1,
               x: isVolumeHovered ? 8 : 0
             }}
-            className="cursor-pointer"
-            onClick={() => {
-              const newVolume = 1;
-              setVolume(newVolume);
-              localStorage.setItem('audioVolume', newVolume.toString());
-              if (playerRef.current) {
-                playerRef.current.volume.value = 20 * Math.log10(newVolume);
-              }
+            className="cursor-pointer select-none"
+            onClick={toggleFullVolume}
+            onDoubleClick={(e) => {
+              e.preventDefault();
+              toggleFullVolume();
             }}
+            style={{ userSelect: 'none' }}
           >
             <SpeakerHigh className={`w-5 h-5 transition-opacity duration-200 ${
               isVolumeHovered ? 'text-foreground' : 'text-muted-foreground'
