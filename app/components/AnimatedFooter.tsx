@@ -8,7 +8,8 @@ export default function AnimatedFooter() {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.3, delay: 0.2, ease: "easeOut" }}
-      className="p-4 fixed bottom-0 w-full text-center text-sm text-muted-foreground"
+      className="p-4 fixed bottom-0 w-full text-center text-sm text-muted-foreground select-none"
+      style={{ userSelect: 'none' }}
     >
       2025 © markie-dev
     </motion.footer>
