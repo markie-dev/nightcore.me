@@ -1,12 +1,13 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  turbopack: {},
   webpack: (config) => {
     config.experiments = {
       ...config.experiments,
       asyncWebAssembly: true,
     };
-    
+
     return config;
   },
   async headers() {
@@ -29,9 +30,9 @@ const nextConfig: NextConfig = {
   images: {
     remotePatterns: [
       {
-        protocol: 'https',
-        hostname: 'i.ytimg.com',
-      }
+        protocol: "https",
+        hostname: "i.ytimg.com",
+      },
     ],
   },
 };
