@@ -2,7 +2,21 @@
 
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import * as Tone from "tone";
-import { Play, Pause, SkipBack, Download, Upload, Speedometer, X, Check, Waveform, Headphones, SpeakerNone, SpeakerHigh, SpeakerSimpleSlash } from "@phosphor-icons/react";
+import {
+  Play,
+  Pause,
+  SkipBack,
+  Download,
+  Upload,
+  Speedometer,
+  X,
+  Check,
+  Waveform,
+  Headphones,
+  SpeakerNone,
+  SpeakerHigh,
+  SpeakerSimpleSlash,
+} from "@phosphor-icons/react";
 import { useTheme } from "next-themes";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -13,10 +27,9 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { getFFmpegHelper } from "@/app/utils/ffmpeg.helper";
 import LinkBar from "@/app/components/LinkBar";
-import Image from 'next/image';
-import { useAudio } from '@/app/contexts/AudioContext';
+import Image from "next/image";
+import { useAudio } from "@/app/contexts/AudioContext";
 import { Skeleton } from "@/components/ui/skeleton";
-
 
 function bufferToWaveBlob(buffer: AudioBuffer) {
   const numOfChan = buffer.numberOfChannels;
@@ -36,13 +49,11 @@ function bufferToWaveBlob(buffer: AudioBuffer) {
     pos += 4;
   }
 
-  
-  setUint32(0x46464952); 
+  setUint32(0x46464952);
   setUint32(length - 8);
-  setUint32(0x45564157); 
+  setUint32(0x45564157);
 
-  
-  setUint32(0x20746d66); 
+  setUint32(0x20746d66);
   setUint32(16);
   setUint16(1);
   setUint16(numOfChan);
@@ -51,8 +62,7 @@ function bufferToWaveBlob(buffer: AudioBuffer) {
   setUint16(numOfChan * 2);
   setUint16(16);
 
-  
-  setUint32(0x61746164); 
+  setUint32(0x61746164);
   setUint32(length - pos - 4);
 
   for (let i = 0; i < numOfChan; i++) {
@@ -74,13 +84,13 @@ interface UploadAreaProps {
   skipAnimation?: boolean;
 }
 
-export default function UploadArea({ }: UploadAreaProps) {
+export default function UploadArea({}: UploadAreaProps) {
   const { theme } = useTheme();
   const playedColor = theme === "dark" ? "#d1d5db" : "#4b5563";
   const futureColor = theme === "dark" ? "#1f2937" : "#9ca3af";
 
-  const { 
-    isUploaded, 
+  const {
+    isUploaded,
     setIsUploaded,
     fileName,
     setFileName,
@@ -94,32 +104,28 @@ export default function UploadArea({ }: UploadAreaProps) {
     isPlaying,
     setIsPlaying,
     isProcessing,
-    setIsProcessing
+    setIsProcessing,
   } = useAudio();
 
-  
   const [currentTime, setCurrentTime] = useState(0);
 
-  
-  
-  const startTimeRef = useRef<number>(0);  
-  const offsetRef = useRef<number>(0);     
+  const startTimeRef = useRef<number>(0);
+  const offsetRef = useRef<number>(0);
   const requestRef = useRef<number>(0);
 
-  
   const playbackRates = [0.75, 1, 1.15, 1.25, 1.5];
 
-  
   const [isConverting, setIsConverting] = useState(false);
-  const [downloadState, setDownloadState] = useState<"idle" | "loading" | "success">("idle");
+  const [downloadState, setDownloadState] = useState<
+    "idle" | "loading" | "success"
+  >("idle");
 
-  
   const [isScrubbing, setIsScrubbing] = useState(false);
 
   // play silent audio to unlock iOS audio
   const [audioElement] = useState(() => {
-    if (typeof window !== 'undefined') {
-      const audio = new Audio('/silence.mp3');
+    if (typeof window !== "undefined") {
+      const audio = new Audio("/silence.mp3");
       audio.loop = false;
       return audio;
     }
@@ -127,8 +133,8 @@ export default function UploadArea({ }: UploadAreaProps) {
   });
 
   const [volume, setVolume] = useState(() => {
-    if (typeof window !== 'undefined') {
-      const savedVolume = localStorage.getItem('audioVolume');
+    if (typeof window !== "undefined") {
+      const savedVolume = localStorage.getItem("audioVolume");
       return savedVolume ? parseFloat(savedVolume) : 1;
     }
     return 1;
@@ -143,7 +149,7 @@ export default function UploadArea({ }: UploadAreaProps) {
     } else {
       play();
     }
-    
+
     (document.activeElement as HTMLElement)?.blur();
   }, []);
 
@@ -152,19 +158,19 @@ export default function UploadArea({ }: UploadAreaProps) {
   ====================== */
   useEffect(() => {
     function handleKeyPress(e: KeyboardEvent) {
-      if (e.code !== 'Space') return;
+      if (e.code !== "Space") return;
       e.stopPropagation();
       e.preventDefault();
       (document.activeElement as HTMLElement)?.blur();
-      
+
       if (isUploaded) {
         togglePlayPause();
       }
     }
 
-    document.addEventListener('keydown', handleKeyPress, true);
+    document.addEventListener("keydown", handleKeyPress, true);
     return () => {
-      document.removeEventListener('keydown', handleKeyPress, true);
+      document.removeEventListener("keydown", handleKeyPress, true);
     };
   }, [isUploaded, togglePlayPause]);
 
@@ -177,13 +183,11 @@ export default function UploadArea({ }: UploadAreaProps) {
     setIsProcessing(true);
     const url = URL.createObjectURL(file);
 
-    
     if (playerRef.current) {
       playerRef.current.dispose();
       playerRef.current = null;
     }
 
-    
     const newPlayer = new Tone.Player(url, () => {
       setIsUploaded(true);
       setFileName(file.name);
@@ -198,17 +202,18 @@ export default function UploadArea({ }: UploadAreaProps) {
       setIsProcessing(false);
     }).toDestination();
 
-    
     newPlayer.onstop = () => {
       const rawBuffer = newPlayer.buffer?.get();
       const bufferDuration = rawBuffer?.duration || 0;
-      
-      
+
       const elapsed = Tone.now() - startTimeRef.current;
       const actualCurrentTime = offsetRef.current + elapsed;
-      
-      
-      if (!isScrubbing && bufferDuration > 0 && Math.abs(actualCurrentTime - bufferDuration) < 1.2) {
+
+      if (
+        !isScrubbing &&
+        bufferDuration > 0 &&
+        Math.abs(actualCurrentTime - bufferDuration) < 1.2
+      ) {
         setIsPlaying(false);
         offsetRef.current = 0;
         setCurrentTime(0);
@@ -227,23 +232,26 @@ export default function UploadArea({ }: UploadAreaProps) {
   function play() {
     const player = playerRef.current;
     if (!player) return;
-    
+
     // play silent audio to unlock iOS audio
     if (audioElement) {
-        audioElement.play().then(() => {
-            if (Tone.context.state === "suspended") {
-                Tone.start().then(() => {
-                    player.start(undefined, offsetRef.current);
-                    startTimeRef.current = Tone.now();
-                    setIsPlaying(true);
-                });
-            } else {
-                player.start(undefined, offsetRef.current);
-                startTimeRef.current = Tone.now();
-                setIsPlaying(true);
-            }
-        }).catch(error => {
-            console.error("Error starting audio:", error);
+      audioElement
+        .play()
+        .then(() => {
+          if (Tone.context.state === "suspended") {
+            Tone.start().then(() => {
+              player.start(undefined, offsetRef.current);
+              startTimeRef.current = Tone.now();
+              setIsPlaying(true);
+            });
+          } else {
+            player.start(undefined, offsetRef.current);
+            startTimeRef.current = Tone.now();
+            setIsPlaying(true);
+          }
+        })
+        .catch((error) => {
+          console.error("Error starting audio:", error);
         });
     }
   }
@@ -251,10 +259,10 @@ export default function UploadArea({ }: UploadAreaProps) {
   function pause() {
     const player = playerRef.current;
     if (!player) return;
-    
+
     const elapsed = Tone.now() - startTimeRef.current;
-    offsetRef.current += elapsed; 
-    player.stop(); 
+    offsetRef.current += elapsed;
+    player.stop();
     setIsPlaying(false);
   }
 
@@ -266,8 +274,7 @@ export default function UploadArea({ }: UploadAreaProps) {
       if (playerRef.current && playerRef.current.state === "started") {
         const elapsed = Tone.now() - startTimeRef.current;
         const newTime = offsetRef.current + elapsed;
-        
-        
+
         if (Math.abs(newTime - currentTime) > 0.1) {
           setCurrentTime(newTime);
         }
@@ -289,25 +296,22 @@ export default function UploadArea({ }: UploadAreaProps) {
     const player = playerRef.current;
     if (!player) return;
 
-    setIsScrubbing(true);  
-    
+    setIsScrubbing(true);
+
     const wasPlaying = player.state === "started";
     if (wasPlaying) {
       player.stop();
     }
-    
-    
+
     offsetRef.current = newTime;
     setCurrentTime(newTime);
     startTimeRef.current = Tone.now();
 
-    
     if (wasPlaying) {
       player.start(undefined, newTime);
       setIsPlaying(true);
     }
 
-    
     setTimeout(() => setIsScrubbing(false), 500);
   }
 
@@ -315,18 +319,15 @@ export default function UploadArea({ }: UploadAreaProps) {
     const player = playerRef.current;
     if (!player) return;
 
-    
     const wasPlaying = player.state === "started";
 
-    
     player.stop();
     offsetRef.current = 0;
     setCurrentTime(0);
     setIsPlaying(false);
-    
+
     (document.activeElement as HTMLElement)?.blur();
 
-    
     if (wasPlaying) {
       play();
     }
@@ -340,7 +341,7 @@ export default function UploadArea({ }: UploadAreaProps) {
     if (playerRef.current) {
       playerRef.current.playbackRate = rate;
     }
-    
+
     (document.activeElement as HTMLElement)?.blur();
   }
 
@@ -355,13 +356,21 @@ export default function UploadArea({ }: UploadAreaProps) {
       const wavData = new Uint8Array(await wavBlob.arrayBuffer());
 
       await ffmpeg.writeFile("input.wav", wavData);
-      await ffmpeg.run(["-i", "input.wav", "-codec:a", "libmp3lame", "-qscale:a", "2", "output.mp3"]);
+      await ffmpeg.run([
+        "-i",
+        "input.wav",
+        "-codec:a",
+        "libmp3lame",
+        "-qscale:a",
+        "2",
+        "output.mp3",
+      ]);
 
       const mp3Data = await ffmpeg.readFile("output.mp3");
       await ffmpeg.deleteFile("input.wav");
       await ffmpeg.deleteFile("output.mp3");
 
-      return new Blob([mp3Data], { type: "audio/mp3" });
+      return new Blob([new Uint8Array(mp3Data)], { type: "audio/mp3" });
     } finally {
       setIsConverting(false);
     }
@@ -379,7 +388,6 @@ export default function UploadArea({ }: UploadAreaProps) {
       const MIN_LOADING_TIME = 500;
       const startTime = Date.now();
 
-      
       const originalBuffer = player.buffer?.get();
       if (!originalBuffer) {
         console.error("Failed to get original buffer");
@@ -387,15 +395,12 @@ export default function UploadArea({ }: UploadAreaProps) {
       }
       const durationSeconds = originalBuffer.duration / playbackRate;
 
-      
       const renderedBuffer = await Tone.Offline(() => {
-        
         const offPlayer = new Tone.Player(originalBuffer).toDestination();
         offPlayer.playbackRate = playbackRate;
         offPlayer.start(0);
       }, durationSeconds);
 
-      
       let finalBlob: Blob;
       if (format === "wav") {
         finalBlob = bufferToWaveBlob(renderedBuffer.get() as AudioBuffer);
@@ -403,7 +408,6 @@ export default function UploadArea({ }: UploadAreaProps) {
         finalBlob = await convertToMP3(renderedBuffer.get() as AudioBuffer);
       }
 
-      
       const url = URL.createObjectURL(finalBlob);
       const link = document.createElement("a");
       link.href = url;
@@ -412,7 +416,6 @@ export default function UploadArea({ }: UploadAreaProps) {
       link.click();
       URL.revokeObjectURL(url);
 
-      
       const elapsed = Date.now() - startTime;
       if (elapsed < MIN_LOADING_TIME) {
         await new Promise((res) => setTimeout(res, MIN_LOADING_TIME - elapsed));
@@ -435,10 +438,14 @@ export default function UploadArea({ }: UploadAreaProps) {
     return `${m}:${s < 10 ? "0" : ""}${s}`;
   }
 
-  const handleYouTubeAudio = async (buffer: AudioBuffer, title?: string, thumbnail?: string) => {
+  const handleYouTubeAudio = async (
+    buffer: AudioBuffer,
+    title?: string,
+    thumbnail?: string
+  ) => {
     try {
       setIsProcessing(true);
-      
+
       if (playerRef.current) {
         playerRef.current.dispose();
         playerRef.current = null;
@@ -448,42 +455,43 @@ export default function UploadArea({ }: UploadAreaProps) {
       setFileName(title || "YouTube Audio");
       setThumbnail(thumbnail || null);
       setDuration(buffer.duration);
-      
+
       const newPlayer = new Tone.Player({
         url: buffer,
         onload: () => {
-          console.log('Player loaded');
+          console.log("Player loaded");
           setIsProcessing(false);
-        }
+        },
       }).toDestination();
 
-      
       newPlayer.autostart = false;
       newPlayer.playbackRate = playbackRate;
       newPlayer.volume.value = 20 * Math.log10(volume);
-      
-      
+
       newPlayer.onstop = () => {
         const bufferDuration = buffer.duration;
         const elapsed = Tone.now() - startTimeRef.current;
         const actualCurrentTime = offsetRef.current + elapsed;
-        
-        if (!isScrubbing && bufferDuration > 0 && Math.abs(actualCurrentTime - bufferDuration) < 1.2) {
+
+        if (
+          !isScrubbing &&
+          bufferDuration > 0 &&
+          Math.abs(actualCurrentTime - bufferDuration) < 1.2
+        ) {
           setIsPlaying(false);
           offsetRef.current = 0;
           setCurrentTime(0);
         }
       };
       playerRef.current = newPlayer;
-      
+
       setCurrentTime(0);
       offsetRef.current = 0;
       setIsPlaying(false);
-
     } catch (error) {
-      console.error('Error setting up player:', error);
+      console.error("Error setting up player:", error);
       setIsProcessing(false);
-      
+
       setIsUploaded(false);
       setFileName("");
       setThumbnail(null);
@@ -496,7 +504,7 @@ export default function UploadArea({ }: UploadAreaProps) {
   function handleVolumeChange(e: React.ChangeEvent<HTMLInputElement>) {
     const newVolume = parseFloat(e.target.value);
     setVolume(newVolume);
-    localStorage.setItem('audioVolume', newVolume.toString());
+    localStorage.setItem("audioVolume", newVolume.toString());
     if (playerRef.current) {
       playerRef.current.volume.value = 20 * Math.log10(newVolume);
     }
@@ -505,7 +513,7 @@ export default function UploadArea({ }: UploadAreaProps) {
   function toggleMute() {
     const newVolume = volume === 0 ? 1 : 0;
     setVolume(newVolume);
-    localStorage.setItem('audioVolume', newVolume.toString());
+    localStorage.setItem("audioVolume", newVolume.toString());
     if (playerRef.current) {
       playerRef.current.volume.value = 20 * Math.log10(newVolume);
     }
@@ -514,7 +522,7 @@ export default function UploadArea({ }: UploadAreaProps) {
   function toggleFullVolume() {
     const newVolume = volume === 1 ? 0 : 1;
     setVolume(newVolume);
-    localStorage.setItem('audioVolume', newVolume.toString());
+    localStorage.setItem("audioVolume", newVolume.toString());
     if (playerRef.current) {
       playerRef.current.volume.value = 20 * Math.log10(newVolume);
     }
@@ -525,20 +533,20 @@ export default function UploadArea({ }: UploadAreaProps) {
   ====================== */
   if (!isUploaded || isProcessing) {
     return (
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0, scale: 0.98 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 0.3, ease: "easeOut" }}
         className="mt-12 max-w-xl mx-auto"
       >
         {isProcessing ? (
-          <motion.div 
+          <motion.div
             className="border-2 border-dashed border-primary/50 rounded-lg px-12 py-8 text-center bg-primary/5"
             initial={{ scale: 0.98 }}
             animate={{ scale: 1 }}
             transition={{ duration: 0.3, ease: "easeOut" }}
           >
-            <motion.div 
+            <motion.div
               className="flex flex-col items-center gap-4"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -551,12 +559,14 @@ export default function UploadArea({ }: UploadAreaProps) {
               />
               <div>
                 <p className="text-lg font-medium">Processing audio file...</p>
-                <p className="text-sm text-muted-foreground mt-1">This might take a moment</p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  This might take a moment
+                </p>
               </div>
             </motion.div>
           </motion.div>
         ) : (
-          <motion.div 
+          <motion.div
             className="border-2 border-dashed border-gray-100 dark:border-gray-700 rounded-lg px-12 py-8 text-center hover:border-gray-200 dark:hover:border-gray-600 transition-all duration-200 group cursor-pointer bg-gray-50/50 dark:bg-gray-100/10 hover:bg-gray-100/50 dark:hover:bg-gray-100/20"
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
@@ -572,7 +582,11 @@ export default function UploadArea({ }: UploadAreaProps) {
               e.preventDefault();
               e.currentTarget.classList.remove("border-primary");
               const file = e.dataTransfer.files[0];
-              if (file && (file.type.startsWith("audio/") || file.name.match(/\.(mp3|wav|m4a|aac|ogg)$/i))) {
+              if (
+                file &&
+                (file.type.startsWith("audio/") ||
+                  file.name.match(/\.(mp3|wav|m4a|aac|ogg)$/i))
+              ) {
                 handleFileUpload(file);
               } else {
                 console.warn("Please upload an audio file");
@@ -584,14 +598,18 @@ export default function UploadArea({ }: UploadAreaProps) {
               input.accept = "audio/*,.mp3,.wav,.m4a,.aac,.ogg";
               input.onchange = (e) => {
                 const f = (e.target as HTMLInputElement).files?.[0];
-                if (f && (f.type.startsWith("audio/") || f.name.match(/\.(mp3|wav|m4a|aac|ogg)$/i))) {
+                if (
+                  f &&
+                  (f.type.startsWith("audio/") ||
+                    f.name.match(/\.(mp3|wav|m4a|aac|ogg)$/i))
+                ) {
                   handleFileUpload(f);
                 }
               };
               input.click();
             }}
           >
-            <motion.div 
+            <motion.div
               className="flex flex-col items-center gap-3"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -600,27 +618,28 @@ export default function UploadArea({ }: UploadAreaProps) {
               <Upload className="w-8 h-8 opacity-60" />
               <div>
                 <p className="text-lg font-medium">Drop your audio file here</p>
-                <p className="text-sm text-muted-foreground mt-1">or click to select a file</p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  or click to select a file
+                </p>
               </div>
             </motion.div>
           </motion.div>
         )}
         <div className="max-w-xl mx-auto px-4 my-8">
-        <motion.div 
-          initial={{ opacity: 0, scaleX: 0 }}
-          animate={{ opacity: 1, scaleX: 1 }}
-          transition={{ delay: 0.2 }}
-          className="h-px bg-gradient-to-r from-transparent via-foreground/20 to-transparent"
-        />
-      </div>
+          <motion.div
+            initial={{ opacity: 0, scaleX: 0 }}
+            animate={{ opacity: 1, scaleX: 1 }}
+            transition={{ delay: 0.2 }}
+            className="h-px bg-gradient-to-r from-transparent via-foreground/20 to-transparent"
+          />
+        </div>
         {!isProcessing && <LinkBar onAudioBuffer={handleYouTubeAudio} />}
       </motion.div>
     );
   }
 
-  
   return (
-    <motion.div 
+    <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       className="mt-12 max-w-xl mx-auto p-4 bg-gray-50/50 dark:bg-gray-100/10 rounded-lg"
@@ -651,7 +670,7 @@ export default function UploadArea({ }: UploadAreaProps) {
       </div>
 
       {/* Main UI */}
-      <motion.div 
+      <motion.div
         className="flex flex-col gap-2 px-2"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -659,7 +678,7 @@ export default function UploadArea({ }: UploadAreaProps) {
       >
         {/* Thumbnail */}
         {thumbnail && (
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             className="relative w-full aspect-square max-w-[240px] mx-auto mb-4 rounded-lg overflow-hidden"
@@ -715,7 +734,7 @@ export default function UploadArea({ }: UploadAreaProps) {
         </div>
 
         {/* Controls row */}
-        <motion.div 
+        <motion.div
           className="flex items-center justify-between mt-2"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -807,11 +826,17 @@ export default function UploadArea({ }: UploadAreaProps) {
                 </motion.button>
               </DropdownMenuTrigger>
               <DropdownMenuContent>
-                <DropdownMenuItem onClick={() => handleDownload("wav")} disabled={downloadState === "loading"}>
+                <DropdownMenuItem
+                  onClick={() => handleDownload("wav")}
+                  disabled={downloadState === "loading"}
+                >
                   <Waveform className="w-4 h-4 mr-2" />
                   Lossless (WAV)
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handleDownload("mp3")} disabled={downloadState === "loading"}>
+                <DropdownMenuItem
+                  onClick={() => handleDownload("mp3")}
+                  disabled={downloadState === "loading"}
+                >
                   <Headphones className="w-4 h-4 mr-2" />
                   {isConverting ? "Converting..." : "Normal (MP3)"}
                 </DropdownMenuItem>
@@ -829,7 +854,11 @@ export default function UploadArea({ }: UploadAreaProps) {
                   whileTap={{ scale: 0.95 }}
                   onClick={() => handlePlaybackRateChange(rate)}
                   className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors hover:bg-gray-100/10 
-                    ${playbackRate === rate ? "bg-foreground/10" : "text-muted-foreground"}`}
+                    ${
+                      playbackRate === rate
+                        ? "bg-foreground/10"
+                        : "text-muted-foreground"
+                    }`}
                 >
                   {rate}x
                 </motion.button>
@@ -849,7 +878,9 @@ export default function UploadArea({ }: UploadAreaProps) {
                     <DropdownMenuItem
                       key={rate}
                       onClick={() => handlePlaybackRateChange(rate)}
-                      className={playbackRate === rate ? "bg-foreground/10" : ""}
+                      className={
+                        playbackRate === rate ? "bg-foreground/10" : ""
+                      }
                     >
                       {rate}x
                     </DropdownMenuItem>
@@ -860,7 +891,7 @@ export default function UploadArea({ }: UploadAreaProps) {
           </div>
         </motion.div>
 
-        <motion.div 
+        <motion.div
           className="flex items-center gap-3 mt-4 px-2"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -870,9 +901,9 @@ export default function UploadArea({ }: UploadAreaProps) {
         >
           <motion.div
             whileTap={{ scale: 0.9 }}
-            animate={{ 
+            animate={{
               scale: isVolumeHovered ? 1.1 : 1,
-              x: isVolumeHovered ? -8 : 0
+              x: isVolumeHovered ? -8 : 0,
             }}
             className="cursor-pointer select-none"
             onClick={toggleMute}
@@ -880,7 +911,7 @@ export default function UploadArea({ }: UploadAreaProps) {
               e.preventDefault();
               toggleMute();
             }}
-            style={{ userSelect: 'none' }}
+            style={{ userSelect: "none" }}
           >
             <AnimatePresence mode="wait" initial={false}>
               {volume === 0 ? (
@@ -891,9 +922,13 @@ export default function UploadArea({ }: UploadAreaProps) {
                   exit={{ opacity: 0, scale: 0.8 }}
                   transition={{ duration: 0.15, ease: "easeOut" }}
                 >
-                  <SpeakerSimpleSlash className={`w-5 h-5 transition-opacity duration-200 ${
-                    isVolumeHovered ? 'text-foreground' : 'text-muted-foreground'
-                  }`} />
+                  <SpeakerSimpleSlash
+                    className={`w-5 h-5 transition-opacity duration-200 ${
+                      isVolumeHovered
+                        ? "text-foreground"
+                        : "text-muted-foreground"
+                    }`}
+                  />
                 </motion.div>
               ) : (
                 <motion.div
@@ -903,9 +938,13 @@ export default function UploadArea({ }: UploadAreaProps) {
                   exit={{ opacity: 0, scale: 0.8 }}
                   transition={{ duration: 0.15, ease: "easeOut" }}
                 >
-                  <SpeakerNone className={`w-5 h-5 transition-opacity duration-200 ${
-                    isVolumeHovered ? 'text-foreground' : 'text-muted-foreground'
-                  }`} />
+                  <SpeakerNone
+                    className={`w-5 h-5 transition-opacity duration-200 ${
+                      isVolumeHovered
+                        ? "text-foreground"
+                        : "text-muted-foreground"
+                    }`}
+                  />
                 </motion.div>
               )}
             </AnimatePresence>
@@ -935,9 +974,9 @@ export default function UploadArea({ }: UploadAreaProps) {
           </div>
           <motion.div
             whileTap={{ scale: 0.9 }}
-            animate={{ 
+            animate={{
               scale: isVolumeHovered ? 1.1 : 1,
-              x: isVolumeHovered ? 8 : 0
+              x: isVolumeHovered ? 8 : 0,
             }}
             className="cursor-pointer select-none"
             onClick={toggleFullVolume}
@@ -945,35 +984,37 @@ export default function UploadArea({ }: UploadAreaProps) {
               e.preventDefault();
               toggleFullVolume();
             }}
-            style={{ userSelect: 'none' }}
+            style={{ userSelect: "none" }}
           >
-            <SpeakerHigh className={`w-5 h-5 transition-opacity duration-200 ${
-              isVolumeHovered ? 'text-foreground' : 'text-muted-foreground'
-            }`} />
+            <SpeakerHigh
+              className={`w-5 h-5 transition-opacity duration-200 ${
+                isVolumeHovered ? "text-foreground" : "text-muted-foreground"
+              }`}
+            />
           </motion.div>
         </motion.div>
       </motion.div>
 
       <style jsx>{`
-        input[type='range'] {
+        input[type="range"] {
           margin: 0;
           padding: 0;
         }
-        input[type='range']::-webkit-slider-thumb {
+        input[type="range"]::-webkit-slider-thumb {
           -webkit-appearance: none;
           appearance: none;
           width: 14px;
           height: 14px;
           border-radius: 50%;
-          background: ${theme === 'dark' ? '#d1d5db' : '#4b5563'};
+          background: ${theme === "dark" ? "#d1d5db" : "#4b5563"};
           cursor: pointer;
           opacity: 1;
         }
-        input[type='range']::-moz-range-thumb {
+        input[type="range"]::-moz-range-thumb {
           width: 14px;
           height: 14px;
           border-radius: 50%;
-          background: ${theme === 'dark' ? '#d1d5db' : '#4b5563'};
+          background: ${theme === "dark" ? "#d1d5db" : "#4b5563"};
           cursor: pointer;
           border: none;
           opacity: 1;
